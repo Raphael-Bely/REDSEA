@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Red Sea — simulateur bouteille</title>
+<meta name="description" content="Simulateur 3D de la bouteille Red Sea : essaie les étiquettes sur la bouteille de 33 cl.">
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="simulateur.css">
+<script src="options.js"></script>
+</head>
+<body>
+<div class="app">
+  <div class="stage">
+    <canvas id="c" tabindex="0" aria-label="Bouteille Red Sea en 3D, déplaçable à la souris ou au doigt"></canvas>
+    <div class="hud">
+      <div class="name" id="curName">Égypte — sable<small>Étiquette 197 × 90 mm sur bouteille 33 cl</small></div>
+      <span class="re" id="re" title="Nombre de Reynolds du liquide : plus il est grand, plus l’écoulement est turbulent">Re ≈ 0 · au repos</span>
+      <button class="btn" id="fog" aria-pressed="true" title="Buée et gouttes sur le verre">Condensation</button>
+      <button class="btn" id="spin" aria-pressed="false">Faire tourner</button>
+      <button class="btn" id="reset">Recentrer</button>
+    </div>
+    <p class="help"><b>Glisser</b> : tourner et incliner la bouteille<span class="xt"> (attrape le goulot pour la pencher, secoue pour brasser, fais-la tourner vite pour chasser les gouttes)</span> · <b>molette / pincer</b> : zoom vers le curseur · <b>clic droit / 2 doigts</b> : déplacer</p>
+  </div>
+  <aside>
+    <section class="sec">
+      <h2>Déposer une étiquette</h2>
+      <label class="drop" id="drop" tabindex="0">
+        <strong>Glisse une image ici</strong>
+        ou clique pour choisir un fichier (PNG, JPG).<br>Format attendu : étiquette à plat 197 × 90 mm, bord gauche = zone recouverte.
+        <input type="file" id="file" accept="image/*" multiple hidden>
+      </label>
+    </section>
+    <section class="sec">
+      <h2>Mes étiquettes</h2>
+      <div class="grid" id="mine"></div>
+      <p class="empty" id="mineEmpty">Les étiquettes que tu déposes s'ajoutent ici et restent dans ce navigateur.</p>
+    </section>
+    <section class="sec">
+      <h2>Étiquettes du template</h2>
+      <div class="grid" id="lib"></div>
+      <p class="empty" id="sync" aria-live="polite"></p>
+    </section>
+    <p class="spec">Bouteille Ø 60,1 mm · tour 189 mm + 8 mm de recouvrement · étiquette posée à 30 mm du fond.</p>
+  </aside>
+</div>
+
+<script src="three.min.js"></script>
+<script src="simulateur.js"></script>
+</body>
+</html>

@@ -1,0 +1,69 @@
+{
+ "synced": "2026-11-16T22:05:43+00:00",
+ "labels": [
+  {
+   "file": "egypte-sable-58075fae28.jpg",
+   "board": "Blank.dc.html",
+   "title": "Égypte — sable",
+   "sub": "Version actuelle",
+   "sha": "58075fae28709115ccc441540750f9a359aa29c99295bc094d440742e1540d4e",
+   "key": "egypte-sable"
+  },
+  {
+   "file": "chameau-noir-7b9039f9f9.jpg",
+   "board": "BlankC.dc.html",
+   "title": "Noir — hibiscus rose",
+   "sub": "Facettes roses + or",
+   "sha": "7b9039f9f9c86b5e7de384a34e1286076f0d032dd4b12fb432807a4fcc26ae74",
+   "key": "chameau-noir"
+  },
+  {
+   "file": "turquoise-v3-34ca84e520.jpg",
+   "board": "Wrap197c.dc.html",
+   "title": "Turquoise V3",
+   "sub": "Hibiscus + tampon",
+   "sha": "34ca84e5208478e7abdc888a10c46c3f8511425ff446f4ece0dc694ce0dff3fd",
+   "key": "turquoise-v3"
+  },
+  {
+   "file": "rouge-tampon-6f381cea2e.jpg",
+   "board": "Wrap197r.dc.html",
+   "title": "Rouge — tampon",
+   "sub": "Bordeaux + mosaïque",
+   "sha": "6f381cea2eb6e95c561d8c61647652343bedb58e97b853bd85aecae3bfd4f2b9",
+   "key": "rouge-tampon"
+  },
+  {
+   "file": "illustree-33e2627f50.jpg",
+   "board": "Wrap197o.dc.html",
+   "title": "Illustrée",
+   "sub": "Personnage qui boit",
+   "sha": "33e2627f50a360ad8081d0f57365a0cd056404f07de019fad43ad15c6b67ee7e",
+   "key": "illustree"
+  },
+  {
+   "file": "cleopatre-60f9f062af.jpg",
+   "board": "Wrap197p.dc.html",
+   "title": "Cléopâtre",
+   "sub": "Illustration",
+   "sha": "60f9f062af69ad312ac2e56ab1748379ce19ebc6a7ad782a0380f51ba543d81f",
+   "key": "cleopatre"
+  },
+  {
+   "file": "chameau-illu-ac4cd87bce.jpg",
+   "board": "Wrap197q.dc.html",
+   "title": "Chameau illustré",
+   "sub": "Illustration",
+   "sha": "ac4cd87bcea0cb2bb811ac40027ee0a84811fc3ba610856909a825be050a17e1",
+   "key": "chameau-illu"
+  },
+  {
+   "file": "momie-730df59deb.jpg",
+   "board": "Wrap197m.dc.html",
+   "title": "Momie",
+   "sub": "Illustration",
+   "sha": "730df59deb02b3a87a315845e312765de56865857cc45b77904d923450b10255",
+   "key": "momie"
+  }
+ ]
+}
