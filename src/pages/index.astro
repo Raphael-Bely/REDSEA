@@ -26,6 +26,12 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
   <div slot="before" class="cursor" data-cursor aria-hidden="true">{hero.cursorLabel}</div>
 
+  <!-- Rideau de transition : le lien « Demander un devis » mène au formulaire sans faire défiler toute la page. -->
+  <div slot="before" class="curtain" data-curtain aria-hidden="true">
+    <div class="mosaic curtain__mosaic"></div>
+    <span class="curtain__word">Devis</span>
+  </div>
+
   <!--
     Scène 3D : un seul canvas fixe, partagé par les trois premières sections.
     La bouteille reste à l'écran et se déplace d'une scène à l'autre.

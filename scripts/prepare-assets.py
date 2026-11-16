@@ -12,6 +12,8 @@ Les fichiers générés sont versionnés : ce script n'est utile que si les sour
 """
 from pathlib import Path
 import numpy as np
+import sys
+
 import cv2
 from PIL import Image, ImageDraw, ImageFilter
 
@@ -26,23 +28,35 @@ label.save(PUB / "textures/label.png", optimize=True)
 label.save(PUB / "textures/label.webp", quality=92, method=6)
 print("label", label.size)
 
+# Version haute définition (écrans d'ordinateur) : la face visible de la bouteille n'utilise
+# qu'un tiers de l'image, agrandie à l'écran. Agrandissement ×3 qui re-trace les encres
+# pleines (voir label_hd.py) : texte et logo restent nets au lieu de pixeliser.
+# À remplacer par un export ≥ 4000 px de large de l'étiquette quand il existe.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from label_hd import upscale_label  # noqa: E402
+
+label_hd = upscale_label(label)
+label_hd.save(PUB / "textures/label-hd.webp", quality=92, method=6)
+print("label-hd", label_hd.size)
+
 # ---------- Logo hibiscus (capsule + favicon) ----------
 # Zone du logo sur l'étiquette (fleur + feuilles, sans le cercle).
-logo = label.crop((222, 158, 512, 428)).convert("RGB")
+# Pris sur l'étiquette HD (encres re-tracées, ×3) : le logo du bouchon est net en gros plan.
+logo = label_hd.crop((666, 474, 1536, 1284)).convert("RGB")
 a = np.asarray(logo).astype(np.float32)
 r, g, b = a[..., 0], a[..., 1], a[..., 2]
-# Le rouge hibiscus est le seul ton franchement sombre et saturé en rouge.
-redness = np.clip((r - (g + b) / 2 - 20) / 60, 0, 1) * np.clip((75 - g) / 35, 0, 1)
-mask = Image.fromarray((redness * 255).astype(np.uint8)).filter(ImageFilter.GaussianBlur(0.6))
-# Retire le cercle fin qui entoure le logo : on ne garde que la plus grande composante.
-m = (np.asarray(mask) > 90).astype(np.uint8)
+# Le rouge hibiscus est le seul ton où R dépasse nettement G (voir label_hd.py).
+redness = np.clip((r - g - 52) / (121 - 52), 0, 1)
+mask = Image.fromarray((redness * 255).astype(np.uint8))
+# Retire le cercle fin qui entoure le logo : on ne garde que les composantes épaisses.
+m = (np.asarray(mask) > 110).astype(np.uint8)
 n, lab, stats, _ = cv2.connectedComponentsWithStats(m, 8)
 keep = np.zeros_like(m)
-opened = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))  # efface les traits fins (cercle)
+opened = cv2.morphologyEx(m, cv2.MORPH_OPEN, np.ones((15, 15), np.uint8))  # efface les traits fins (cercle)
 for i in range(1, n):
     if opened[lab == i].any():
         keep[lab == i] = 1
-keep = cv2.dilate(keep, np.ones((3, 3), np.uint8))
+keep = cv2.dilate(keep, np.ones((7, 7), np.uint8))
 mask = Image.fromarray((np.asarray(mask) * keep).astype(np.uint8))
 ys, xs = np.nonzero(np.asarray(mask) > 40)
 mask = mask.crop((xs.min(), ys.min(), xs.max() + 1, ys.max() + 1))
@@ -66,7 +80,7 @@ def disc(size, bg, fg, scale=0.74, rim=None):
     return im.resize((size, size), Image.LANCZOS)
 
 GOLD, RED, CREAM = (201, 163, 92), (122, 10, 16), (243, 226, 196)
-disc(512, GOLD, RED, 0.72, rim=(176, 138, 70)).save(PUB / "textures/cap.png", optimize=True)
+disc(1024, GOLD, RED, 0.72, rim=(176, 138, 70)).save(PUB / "textures/cap.png", optimize=True)
 disc(32, CREAM, RED, 0.84).save(PUB / "favicon-32.png")
 disc(192, CREAM, RED, 0.8).save(PUB / "favicon-192.png")
 sq = Image.new("RGB", (180, 180), CREAM); f = flower(132, RED); sq.paste(f, ((180 - f.width) // 2, (180 - f.height) // 2), f)

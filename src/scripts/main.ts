@@ -22,7 +22,12 @@ const EASE_OUT = CustomEase.create('redsea-out', '0.16, 1, 0.3, 1');
 const EASE_CURTAIN = CustomEase.create('redsea-curtain', '0.76, 0, 0.24, 1');
 const EASE_SOFT = CustomEase.create('redsea-soft', '0.33, 0.01, 0.12, 1');
 
-const TEXTURES = { label: '/textures/label.webp', cap: '/textures/cap.png' } as const;
+const TEXTURES = {
+  label: '/textures/label.webp',
+  /** Étiquette ×3 pour les écrans d'ordinateur, où la bouteille est affichée en grand. */
+  labelHd: '/textures/label-hd.webp',
+  cap: '/textures/cap.png',
+} as const;
 
 /**
  * Durée de scroll de chaque scène, en écrans (1 = 100svh). À garder en phase avec les hauteurs
@@ -174,7 +179,7 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
   onProgress(0.25);
   const bottle = await createBottle({
     canvas,
-    labelUrl: TEXTURES.label,
+    labelUrl: smallScreen ? TEXTURES.label : TEXTURES.labelHd,
     capUrl: TEXTURES.cap,
     lowPower: smallScreen,
     onProgress: (ratio) => onProgress(0.25 + ratio * 0.75),
@@ -602,6 +607,85 @@ function quoteScrollTarget(scenes: boolean) {
   return quote.getBoundingClientRect().top + window.scrollY + (scenes ? vh() : 0);
 }
 
+/**
+ * Lien « Demander un devis » : plutôt que de dérouler toutes les scènes, un rideau rouge
+ * monte, la page saute au formulaire derrière lui, puis le rideau se lève sur le devis.
+ */
+function setupQuoteJump(lenis: Lenis, scenes: boolean) {
+  const curtain = $('[data-curtain]');
+  const word = curtain?.querySelector('.curtain__word');
+  let busy = false;
+
+  const jump = () => {
+    lenis.scrollTo(quoteScrollTarget(scenes), { immediate: true, force: true });
+    ScrollTrigger.update();
+    // Les timelines « scrub » rattrapent le scroll en douceur : on les termine tout de suite,
+    // à l'abri du rideau, pour que le devis soit déjà en place quand il se lève.
+    for (const trigger of ScrollTrigger.getAll()) trigger.getTween()?.progress(1);
+    // Volontairement, l'adresse ne prend pas « #devis » : un rechargement repart du hero.
+  };
+
+  const focusQuote = () => {
+    const title = $('#quote-title');
+    if (!title) return;
+    title.setAttribute('tabindex', '-1');
+    title.focus({ preventScroll: true });
+  };
+
+  for (const link of $$<HTMLAnchorElement>('a[href$="#devis"]')) {
+    link.addEventListener('click', (event) => {
+      event.preventDefault();
+      if (busy) return;
+      if (!curtain) {
+        jump();
+        focusQuote();
+        return;
+      }
+      busy = true;
+      lenis.stop();
+      // Contraste avec la section affichée : rideau rouge sur fond beige, beige sur fond rouge
+      // (et sur le devis, sombre).
+      const onLightScene = ($('[data-header]')?.dataset.theme ?? 'light') === 'light';
+      curtain.classList.toggle('curtain--cream', !onLightScene);
+      gsap
+        .timeline({
+          onComplete: () => {
+            busy = false;
+            lenis.start();
+            focusQuote();
+          },
+        })
+        .set(curtain, { visibility: 'visible' })
+        .fromTo(
+          curtain,
+          { clipPath: 'inset(100% 0% 0% 0%)' },
+          { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.75, ease: 'expo.inOut' },
+        )
+        .fromTo(word ?? {}, { yPercent: 60, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.6, ease: EASE_OUT }, 0.35)
+        .add(jump)
+        .to(word ?? {}, { yPercent: -50, autoAlpha: 0, duration: 0.45, ease: 'power2.in' }, '+=0.25')
+        .to(curtain, { clipPath: 'inset(0% 0% 100% 0%)', duration: 0.85, ease: 'expo.inOut' }, '<0.1')
+        .set(curtain, { visibility: 'hidden', clipPath: 'inset(100% 0% 0% 0%)' });
+    });
+  }
+}
+
+/**
+ * Le site ne s'ouvre sur le devis que si l'on vient de cliquer « Demander un devis » depuis une
+ * autre page du site (mentions légales, confidentialité). Un rechargement, un onglet restauré
+ * ou un lien externe démarrent sur le hero, avec l'animation d'entrée.
+ */
+function arrivedFromQuoteLink() {
+  const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined;
+  if (navigation && navigation.type !== 'navigate') return false;
+  try {
+    const from = new URL(document.referrer);
+    return from.origin === location.origin && from.pathname !== location.pathname;
+  } catch {
+    return false;
+  }
+}
+
 /* -------------------------------------------------------------------------- */
 /* Démarrage                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -612,7 +696,9 @@ async function init() {
   if (scenes) root.classList.add('has-scenes');
   // La page s'ouvre toujours sur le hero (l'intro en dépend), sauf si l'URL vise le devis.
   history.scrollRestoration = 'manual';
-  const startAtQuote = location.hash === '#devis';
+  const startAtQuote = location.hash === '#devis' && arrivedFromQuoteLink();
+  // L'ancre ne doit pas survivre à un rechargement : on la retire de l'adresse.
+  if (location.hash === '#devis') history.replaceState(null, '', location.pathname + location.search);
   if (!startAtQuote) window.scrollTo(0, 0);
 
   const { progress, exit } = setupLoader();
@@ -681,16 +767,7 @@ async function init() {
   document.addEventListener('redsea:layout', () => ScrollTrigger.refresh());
   ScrollTrigger.refresh();
 
-  // Lien « Demander un devis » : on vise le point où le formulaire est entièrement révélé.
-  if (lenis) {
-    for (const link of $$<HTMLAnchorElement>('a[href$="#devis"]')) {
-      link.addEventListener('click', (event) => {
-        event.preventDefault();
-        lenis?.scrollTo(quoteScrollTarget(scenes), { duration: 2.4, easing: (t) => 1 - Math.pow(1 - t, 4) });
-        history.replaceState(null, '', '#devis');
-      });
-    }
-  }
+  if (lenis) setupQuoteJump(lenis, scenes);
 
   const exiting = exit();
   if (playIntro) {
@@ -707,7 +784,17 @@ async function init() {
     else window.scrollTo(0, target);
     ScrollTrigger.update();
   }
+  // Le navigateur peut encore sauter à une ancre (#devis) pendant le chargement : sans clic
+  // sur « Demander un devis », on repart du haut, là où l'animation d'entrée se joue.
+  const backToTop = () => {
+    if (startAtQuote || window.scrollY === 0) return;
+    if (lenis) lenis.scrollTo(0, { immediate: true, force: true });
+    else window.scrollTo(0, 0);
+    ScrollTrigger.update();
+  };
+  backToTop();
   await exiting;
+  backToTop();
   root.classList.remove('is-loading');
   lenis?.start();
   ScrollTrigger.refresh();

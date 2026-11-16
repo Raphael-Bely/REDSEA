@@ -182,7 +182,14 @@ Générée procéduralement dans `src/three/Bottle.ts` :
 - **liquide** : volume intérieur rouge hibiscus, niveau sous le col ;
 - **capsule** : métal doré, trois filets de pas de vis, logo hibiscus (`cap.png`) sur le dessus ;
 - **étiquette** : `label.webp` enroulée sur 360°, hauteur déduite du ratio de l'image, sRGB, anisotropie maximale ;
-- **condensation** : normal map de gouttes calculée à la volée (désactivée sur mobile) ; ombre de contact en dégradé.
+- **liquide** : volume translucide (absorption de Beer-Lambert : le fond de page reste visible à travers, rubis profond au centre, plus clair sur les bords et dans le col) ; surface libre calculée dans le shader, qui ballotte quand la bouteille tourne ou se déplace (inclinaison sur ressort amorti, vortex, onde). Bords sombres, bande de lumière transmise et éclat au fond, comme sur la photo. Réglages : `LIQUID_ABSORPTION` et `updateLiquid()` dans `Bottle.ts`. Ombre de contact en dégradé et tache de lumière rouge sur la table.
+- **condensation** : ~1 100 gouttes en relief (une géométrie instanciée, `createCondensation()`), qui réfractent le liquide et reflètent le studio ; désactivée sur mobile. Pour la retirer : passer `condensation: false` à `loadBottleModel()` dans `createBottle()`.
+- **étiquette** : `label-hd.webp` sur ordinateur, `label.webp` sur mobile. La version HD est un agrandissement ×3 qui re-trace les encres pleines (rouge, noir) comme un tracé vectoriel (`scripts/label_hd.py`, appelé par `prepare-assets.py`). Un export de l'étiquette d'au moins 4000 px de large donnerait encore mieux.
+- **capsule** : logo tiré de l'étiquette HD (`cap.png`, 1024 px), encre rouge mate sur or poli, moletage en relief sur le pourtour.
+- **rotation idle** : sans scroll pendant 1,5 s, la bouteille tourne lentement sur elle-même (`IDLE_SPEED`) ; au scroll elle termine son tour pour retrouver la face prévue.
+- **rideau du devis** : rouge depuis une section beige, beige depuis une section rouge ou le devis.
+- **éclairage** : verre (avec vernis) et capsule reflètent un studio photo procédural (`createStudioEnvironment()` : boîtes à lumière verticales sur fond sombre), d'où les longs filets de lumière.
+- **lien « Demander un devis »** : un rideau rouge couvre l'écran, la page saute au formulaire derrière lui, puis le rideau se lève (`setupQuoteJump()` dans `main.ts`).
 
 Interactions : rotation pilotée par le scroll dans le hero, drag horizontal (souris et tactile) avec inertie amortie, rotation lente au repos, curseur « Tourner ». Au clavier : flèches gauche/droite pour tourner, Entrée ou Espace pour le demi-tour.
 

@@ -594,6 +594,11 @@ html.has-scenes .site-footer {
   margin-bottom: 1.2rem;
 }
 
+/* Le titre reçoit le focus après le rideau (lecteurs d'écran) : ce n'est pas un contrôle, pas de cadre. */
+.quote__title:focus {
+  outline: none;
+}
+
 .quote__title {
   font-size: calc(clamp(4.6rem, 14.5vw, 17rem) * var(--display-scale));
   line-height: 0.8;

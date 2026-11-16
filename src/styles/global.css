@@ -304,6 +304,44 @@ textarea {
   transform-origin: left center;
 }
 
+/* ---------- Rideau de transition vers le devis ---------- */
+.curtain {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--red);
+  color: var(--cream);
+  clip-path: inset(100% 0 0 0);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.curtain__mosaic {
+  color: var(--red-deep);
+  opacity: 0.55;
+}
+
+.curtain--cream {
+  background: var(--cream);
+  color: var(--red);
+}
+
+.curtain--cream .curtain__mosaic {
+  color: var(--gold);
+  opacity: 0.32;
+}
+
+.curtain__word {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: calc(clamp(5rem, 22vw, 24rem) * var(--display-scale));
+  line-height: 0.8;
+  letter-spacing: -0.02em;
+}
+
 /* ---------- Curseur « Tourner » ---------- */
 .cursor {
   position: fixed;
