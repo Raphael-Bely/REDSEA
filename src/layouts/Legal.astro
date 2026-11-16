@@ -1,0 +1,20 @@
+---
+import Base from './Base.astro';
+import { legal } from '../content/site';
+
+interface Props {
+  title: string;
+  description: string;
+}
+const { title, description } = Astro.props;
+---
+
+<Base title={`${title} — REDSEA`} description={description} headerTheme="light" staticHeader>
+  <article class="legal">
+    <h1 class="legal__title display">{title}</h1>
+    <p class="legal__update label">Dernière mise à jour<br />{legal.lastUpdate}</p>
+    <div class="legal__body">
+      <slot />
+    </div>
+  </article>
+</Base>

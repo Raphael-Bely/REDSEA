@@ -1,0 +1,139 @@
+---
+import Legal from '../layouts/Legal.astro';
+import { legal, rgpd, brand } from '../content/site';
+---
+
+<Legal
+  title="Politique de confidentialité"
+  description="Politique de confidentialité du site REDSEA : traitement des données du formulaire de demande de devis, durées de conservation, droits."
+>
+  <h2>Responsable du traitement</h2>
+  <p>
+    Le responsable du traitement des données collectées sur ce site est {rgpd.controller}, {legal.editor.address}.
+    Contact : {rgpd.rightsEmail}.
+  </p>
+  <p>[À REMPLIR : coordonnées du délégué à la protection des données, s’il en a été désigné un. Sinon, supprimer cette ligne.]</p>
+
+  <h2>Données collectées et origine</h2>
+  <p>
+    Les seules données personnelles traitées sont celles que vous saisissez vous-même dans le formulaire de demande de
+    devis :
+  </p>
+  <ul>
+    <li>nom et prénom ;</li>
+    <li>nom, type et ville de l’établissement ;</li>
+    <li>adresse email ;</li>
+    <li>numéro de téléphone (facultatif) ;</li>
+    <li>volume estimé, date de démarrage souhaitée et message (facultatifs).</li>
+  </ul>
+  <p>
+    Les champs marqués d’un astérisque sont nécessaires pour vous répondre ; sans eux, la demande ne peut pas être
+    traitée. Votre adresse IP est utilisée de façon transitoire, uniquement pour limiter les envois abusifs ; elle
+    n’est pas conservée avec votre demande.
+  </p>
+
+  <h2>Finalités et bases légales</h2>
+  <table class="legal__table">
+    <thead>
+      <tr><th scope="col">Finalité</th><th scope="col">Base légale</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Répondre à votre demande de devis et assurer le suivi commercial qui en découle</td>
+        <td>Exécution de mesures précontractuelles prises à votre demande (article 6.1.b du RGPD)</td>
+      </tr>
+      <tr>
+        <td>Protéger le formulaire contre les envois automatisés (anti-robot, limitation de débit)</td>
+        <td>Intérêt légitime : sécurité du site (article 6.1.f du RGPD)</td>
+      </tr>
+    </tbody>
+  </table>
+  <p>Aucune décision automatisée ni profilage n’est réalisé. Vos données ne sont ni vendues ni utilisées à des fins publicitaires.</p>
+
+  <h2>Destinataires et sous-traitants</h2>
+  <p>
+    Vos données sont destinées aux seules personnes chargées de répondre aux demandes de devis chez {brand.name}. Elles
+    transitent par les prestataires techniques suivants, agissant en qualité de sous-traitants :
+  </p>
+  <table class="legal__table">
+    <thead>
+      <tr><th scope="col">Prestataire</th><th scope="col">Rôle</th><th scope="col">Localisation</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{legal.host.name}</td>
+        <td>Hébergement du site et exécution du formulaire</td>
+        <td>[À REMPLIR]</td>
+      </tr>
+      <tr>
+        <td>Resend (Resend, Inc.)</td>
+        <td>Acheminement de l’email contenant votre demande</td>
+        <td>États-Unis [À VÉRIFIER]</td>
+      </tr>
+      <tr>
+        <td>Slack (Slack Technologies / Salesforce)</td>
+        <td>Notification interne de la demande à l’équipe [À SUPPRIMER si Slack n’est pas utilisé]</td>
+        <td>États-Unis [À VÉRIFIER]</td>
+      </tr>
+      <tr>
+        <td>Cloudflare Turnstile (Cloudflare, Inc.)</td>
+        <td>Vérification anti-robot du formulaire, sans cookie publicitaire</td>
+        <td>États-Unis [À VÉRIFIER]</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Transferts hors Union européenne</h2>
+  <p>
+    Certains de ces prestataires sont établis aux États-Unis. Les transferts sont encadrés par [À REMPLIR : décision
+    d’adéquation « Data Privacy Framework » et/ou clauses contractuelles types de la Commission européenne, selon les
+    contrats de chaque prestataire]. Vous pouvez en obtenir une copie en écrivant à {rgpd.rightsEmail}.
+  </p>
+
+  <h2>Durée de conservation</h2>
+  <p>
+    Les données liées à une demande de devis sont conservées {rgpd.retention} avec vous, puis supprimées. Si la demande
+    aboutit à une relation commerciale, les documents contractuels et comptables sont conservés pendant les durées
+    légales applicables.
+  </p>
+
+  <h2>Vos droits</h2>
+  <p>Conformément au RGPD et à la loi Informatique et Libertés, vous disposez des droits suivants :</p>
+  <ul>
+    <li>droit d’accès à vos données ;</li>
+    <li>droit de rectification ;</li>
+    <li>droit à l’effacement ;</li>
+    <li>droit à la limitation du traitement ;</li>
+    <li>droit d’opposition ;</li>
+    <li>droit à la portabilité des données que vous avez fournies ;</li>
+    <li>droit de définir des directives relatives au sort de vos données après votre décès.</li>
+  </ul>
+  <p>
+    Pour les exercer, écrivez à {rgpd.rightsEmail}. Une réponse vous est apportée dans un délai d’un mois. Un
+    justificatif d’identité pourra vous être demandé en cas de doute raisonnable.
+  </p>
+
+  <h2>Réclamation</h2>
+  <p>
+    Si vous estimez, après nous avoir contactés, que vos droits ne sont pas respectés, vous pouvez adresser une
+    réclamation à la CNIL : 3 place de Fontenoy, TSA 80715, 75334 Paris Cedex 07 —
+    <a href="https://www.cnil.fr/fr/plaintes" rel="noopener noreferrer">www.cnil.fr</a>.
+  </p>
+
+  <h2>Cookies et traceurs</h2>
+  <p>
+    Ce site ne dépose aucun cookie ni traceur tiers : pas d’outil publicitaire, pas de réseau social embarqué, pas de
+    polices chargées depuis un service externe. Le contrôle anti-robot Cloudflare Turnstile n’est chargé que lorsque
+    vous arrivez sur le formulaire ; il est strictement nécessaire à la sécurité de l’envoi. Aucun bandeau de
+    consentement n’est donc requis.
+  </p>
+
+  <h2>Sécurité</h2>
+  <p>
+    Les échanges avec le site sont chiffrés (HTTPS). Les demandes sont validées et filtrées côté serveur, et les accès
+    aux outils qui les reçoivent sont réservés aux personnes habilitées.
+  </p>
+
+  <h2>Modification de cette politique</h2>
+  <p>Cette politique peut être mise à jour ; la date de dernière mise à jour figure en haut de page.</p>
+</Legal>

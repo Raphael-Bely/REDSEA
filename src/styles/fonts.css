@@ -1,0 +1,38 @@
+/* =============================================================================
+   POLICES — UNIQUE ENDROIT OÙ ELLES SONT DÉCLARÉES
+   -----------------------------------------------------------------------------
+   Police d'affichage : la police de marque (lettrage « REDSEA » / « BISSAP » de
+   l'étiquette) n'était pas fournie. Caprasimo (SIL OFL) la remplace en attendant.
+   Pour brancher la vraie police :
+     1. déposer le fichier dans public/fonts/ (woff2 de préférence) ;
+     2. changer l'URL du @font-face « Redsea Display » ci-dessous ;
+     3. changer la même URL dans src/layouts/Base.astro (constante DISPLAY_FONT_URL,
+        utilisée pour le preload) ;
+     4. ajuster si besoin --display-scale (rapport de largeur entre les deux polices).
+   Le nom de famille « Redsea Display » est utilisé partout via --font-display :
+   rien d'autre à modifier.
+   ========================================================================== */
+
+@font-face {
+  font-family: 'Redsea Display';
+  src: url('/fonts/caprasimo-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Police de texte : Schibsted Grotesk (SIL OFL), variable 400–900. */
+@font-face {
+  font-family: 'Schibsted Grotesk';
+  src: url('/fonts/schibsted-grotesk-var.woff2') format('woff2');
+  font-weight: 400 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-display: 'Redsea Display', 'Cooper Black', 'Georgia', serif;
+  --font-text: 'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  /* Multiplicateur appliqué aux titres géants : à ajuster si la police de marque est plus large/étroite. */
+  --display-scale: 1;
+}

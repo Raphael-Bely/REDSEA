@@ -1,0 +1,5 @@
+/* Sans JavaScript : pas de loader, bouteille en image statique. */
+.loader { display: none !important; }
+html.is-loading { overflow: auto !important; }
+.hero .hero__fallback { display: block !important; }
+.stage, .cursor { display: none !important; }

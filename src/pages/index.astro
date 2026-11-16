@@ -1,0 +1,183 @@
+---
+import Base from '../layouts/Base.astro';
+import QuoteForm from '../components/QuoteForm.astro';
+import { Picture } from 'astro:assets';
+import bottleCutout from '../assets/bottle-cutout.png';
+import '../styles/home.css';
+import { brand, hero, about, argumentsSection, quote } from '../content/site';
+
+const aboutWords = about.text.split(/\s+/).filter(Boolean);
+const pad = (n: number) => String(n).padStart(2, '0');
+---
+
+<Base>
+  <div slot="before" class="loader" data-loader role="status" aria-live="polite">
+    <div class="mosaic loader__mosaic" aria-hidden="true"></div>
+    <div class="loader__top">
+      <span class="loader__brand">{brand.name}</span>
+      <span class="label">{brand.product} — Bordeaux</span>
+    </div>
+    <p class="loader__count" aria-hidden="true">
+      <span data-loader-count>0</span><span class="loader__pct">%</span>
+    </p>
+    <span class="sr-only">Chargement du site</span>
+    <span class="loader__bar" data-loader-bar aria-hidden="true"></span>
+  </div>
+
+  <div slot="before" class="cursor" data-cursor aria-hidden="true">{hero.cursorLabel}</div>
+
+  <!--
+    Scène 3D : un seul canvas fixe, partagé par les trois premières sections.
+    La bouteille reste à l'écran et se déplace d'une scène à l'autre.
+  -->
+  <div slot="before" class="stage" data-stage>
+    <canvas class="stage__canvas" data-bottle-canvas aria-hidden="true"></canvas>
+    <button class="stage__hit" type="button" data-bottle-hit aria-label={hero.bottleLabel} hidden></button>
+  </div>
+
+  <!--
+    Chaque .scene est découpée en calques : fond (.scene__bg), contenu qui passe DERRIÈRE la
+    bouteille (.scene__back) et contenu qui passe DEVANT (.scene__front).
+    - Sans animation (prefers-reduced-motion, pas de JavaScript) : sections classiques empilées.
+    - Avec animation (classe .has-scenes posée par main.ts) : les calques deviennent fixes, la
+      section ne garde que sa hauteur (= durée de scroll) et ce sont les éléments qui bougent.
+  -->
+  <div class="scenes" data-scenes>
+    <!-- ====================== HERO ====================== -->
+    <section class="scene hero" data-scene="hero" data-theme-zone="light" aria-label="REDSEA">
+      <div class="scene__bg hero__bg" data-scene-bg>
+        <div class="mosaic hero__mosaic" aria-hidden="true"></div>
+      </div>
+
+      <div class="scene__back hero__back">
+        <h1 class="hero__title display">
+          <span class="sr-only">{hero.srTitle}</span>
+          <span class="hero__title-inner" aria-hidden="true">
+            {
+              hero.titleParts.map((part, i) => (
+                <span class="hero__part" data-hero-part={i}>
+                  {part.split('').map((letter) => (
+                    <span class="hero__letter" data-hero-letter>
+                      {letter}
+                    </span>
+                  ))}
+                </span>
+              ))
+            }
+          </span>
+        </h1>
+        <Picture
+          src={bottleCutout}
+          formats={['avif']}
+          fallbackFormat="webp"
+          widths={[240, 412]}
+          sizes="(max-width: 760px) 46vw, 300px"
+          alt={hero.fallbackAlt}
+          class="hero__fallback"
+          data-bottle-fallback
+          loading="lazy"
+          decoding="async"
+          hidden
+        />
+      </div>
+
+      <div class="scene__front hero__front">
+        <p class="hero__kicker label" data-hero-meta>
+          {hero.kicker.map((line) => <span>{line}</span>)}
+        </p>
+        <ul class="hero__facts label" data-hero-meta>
+          {hero.facts.map((fact) => <li>{fact}</li>)}
+        </ul>
+        <p class="hero__scroll label" data-hero-scroll>
+          <span class="hero__scroll-line" aria-hidden="true"></span>{hero.scrollHint}
+        </p>
+      </div>
+    </section>
+
+    <!-- ====================== QUI SOMMES-NOUS ====================== -->
+    <section class="scene about" id="qui-sommes-nous" data-scene="about" data-theme-zone="dark" aria-labelledby="about-label">
+      <div class="scene__bg about__bg" data-scene-bg>
+        <div class="mosaic about__mosaic" aria-hidden="true"></div>
+      </div>
+
+      <div class="scene__front about__front" data-about-front>
+        <h2 class="about__label label" id="about-label" data-about-label>{about.label}</h2>
+        <p class="about__text" data-about-text>
+          {
+            aboutWords.map((word) => (
+              <>
+                <span class="about__word" data-word>
+                  {word}
+                </span>{' '}
+              </>
+            ))
+          }
+        </p>
+        <p class="about__signature label" data-about-signature>{about.signature}</p>
+      </div>
+    </section>
+
+    <!-- ====================== ARGUMENTS ====================== -->
+    <section class="scene args" id="arguments" data-scene="args" data-theme-zone="light" aria-labelledby="args-label">
+      <div class="scene__bg args__bg" data-scene-bg>
+        <div class="mosaic args__mosaic" aria-hidden="true"></div>
+      </div>
+
+      <div class="scene__back args__back">
+        <ol class="args__list">
+          {
+            argumentsSection.items.map((item, i) => (
+              <li class="args__item" data-arg>
+                <span class="args__index label" data-arg-index>
+                  <span aria-hidden="true">
+                    {pad(i + 1)} / {pad(argumentsSection.items.length)}
+                  </span>
+                </span>
+                <div class="args__body">
+                  {item.struck && (
+                    <p class="args__struck display" data-arg-struck>
+                      <s>
+                        <span class="sr-only">Pas de </span>
+                        {item.struck}
+                      </s>
+                      <span class="args__strike" data-arg-strike aria-hidden="true" />
+                    </p>
+                  )}
+                  <h3 class="args__title display">
+                    <span class="args__title-inner" data-arg-title>
+                      {item.title}
+                    </span>
+                  </h3>
+                  <p class="args__note" data-arg-note>
+                    {item.note}
+                  </p>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
+
+      <div class="scene__front args__front">
+        <h2 class="args__label label" id="args-label" data-args-label>{argumentsSection.label}</h2>
+      </div>
+    </section>
+  </div>
+
+  <!-- ====================== DEVIS ====================== -->
+  <section class="quote" id="devis" data-quote data-theme-zone="dark" aria-labelledby="quote-title">
+    <div class="quote__pin" data-quote-pin>
+      <div class="quote__head">
+        <p class="label quote__label">{quote.label}</p>
+        <h2 class="quote__title display" id="quote-title" data-quote-title>{quote.title}</h2>
+        <p class="quote__intro">{quote.intro}</p>
+      </div>
+      <QuoteForm />
+    </div>
+    <div class="quote__spacer" aria-hidden="true"></div>
+  </section>
+</Base>
+
+<script>
+  import '../scripts/main.ts';
+</script>

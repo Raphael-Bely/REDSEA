@@ -1,0 +1,910 @@
+/* =============================================================================
+   SCÈNES
+   -----------------------------------------------------------------------------
+   Par défaut (sans JavaScript ou avec prefers-reduced-motion) : des sections
+   classiques, empilées, qui défilent normalement.
+   Avec html.has-scenes (posée par main.ts) : chaque calque devient fixe, la
+   section ne garde qu'une hauteur — sa durée de scroll — et ce sont les éléments
+   qui se déplacent. Ordre des plans, du fond vers l'avant :
+     fonds (1-3) < contenu arrière (10) < bouteille 3D (20) < contenu avant (30)
+     < devis et footer (40) < en-tête (60)
+   ========================================================================== */
+.scene {
+  position: relative;
+}
+
+.scene__bg {
+  position: absolute;
+  inset: 0;
+}
+
+.scene__back,
+.scene__front {
+  position: relative;
+}
+
+.stage {
+  display: none;
+}
+
+html.has-scenes .stage {
+  display: block;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+
+html.has-scenes .scene {
+  position: static;
+}
+
+html.has-scenes .scene .scene__bg,
+html.has-scenes .scene .scene__back,
+html.has-scenes .scene .scene__front {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+}
+
+html.has-scenes .hero .scene__bg {
+  z-index: 1;
+}
+
+html.has-scenes .about .scene__bg {
+  z-index: 2;
+}
+
+html.has-scenes .args .scene__bg {
+  z-index: 3;
+}
+
+html.has-scenes .scene .scene__back {
+  z-index: 10;
+}
+
+html.has-scenes .scene .scene__front {
+  z-index: 30;
+}
+
+/* Durées de scroll de chaque scène (1 écran = 100svh). Reprises dans main.ts (SCENE_LENGTH). */
+html.has-scenes .hero {
+  height: 220vh;
+  height: 220svh;
+}
+
+html.has-scenes .about {
+  height: 240vh;
+  height: 240svh;
+}
+
+html.has-scenes .args {
+  height: calc((var(--arg-count, 4) + 1) * 100vh);
+  height: calc((var(--arg-count, 4) + 1) * 100svh);
+}
+
+.stage__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+}
+
+.stage__canvas.is-ready {
+  opacity: 1;
+}
+
+.stage__hit {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  pointer-events: auto;
+  touch-action: pan-y;
+  cursor: grab;
+  border-radius: 40% 40% 12% 12% / 22% 22% 6% 6%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage__hit:active {
+  cursor: grabbing;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .stage__hit,
+  .stage__hit:active {
+    cursor: none;
+  }
+}
+
+.stage__hit:focus-visible {
+  outline: 2px dashed currentColor;
+  outline-offset: 6px;
+}
+
+/* =============================== HERO =============================== */
+.hero {
+  min-height: 100vh;
+  min-height: 100svh;
+  background: var(--cream);
+  color: var(--red);
+  overflow: clip;
+}
+
+html.has-scenes .hero {
+  min-height: 0;
+  background: none;
+  overflow: visible;
+}
+
+.hero__bg {
+  background: var(--cream);
+}
+
+.hero .scene__back,
+.hero .scene__front {
+  position: absolute;
+  inset: 0;
+}
+
+.hero__mosaic {
+  color: var(--gold);
+  opacity: 0.17;
+}
+
+.hero__title {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(21.4vw * var(--display-scale));
+  line-height: 0.8;
+  user-select: none;
+}
+
+.hero__title-inner {
+  display: flex;
+  white-space: nowrap;
+  /* Décalage optique : le titre n'est pas centré, il tire vers le haut-gauche. */
+  translate: -0.6vw -3svh;
+}
+
+.hero__part {
+  display: inline-flex;
+  will-change: transform;
+}
+
+.hero__letter {
+  display: inline-block;
+  will-change: transform;
+}
+
+.hero__fallback {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: auto;
+  height: min(84svh, 300vw);
+  max-width: none;
+  translate: -50% -48%;
+  filter: drop-shadow(0 2.2rem 1.4rem rgb(26 13 11 / 0.22));
+}
+
+.hero__kicker,
+.hero__facts,
+.hero__scroll {
+  position: absolute;
+}
+
+.hero__kicker {
+  top: clamp(4.2rem, 11svh, 7.5rem);
+  left: var(--gutter);
+  display: grid;
+  gap: 0.1rem;
+}
+
+.hero__kicker span:first-child {
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.6rem);
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.hero__facts {
+  right: var(--gutter);
+  bottom: var(--gutter);
+  display: grid;
+  gap: 0.25rem;
+  text-align: right;
+}
+
+.hero__scroll {
+  left: var(--gutter);
+  bottom: var(--gutter);
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.hero__scroll-line {
+  position: relative;
+  display: block;
+  width: 1px;
+  height: 3.2rem;
+  background: color-mix(in srgb, var(--red) 25%, transparent);
+  overflow: hidden;
+}
+
+.hero__scroll-line::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--red);
+  animation: scroll-hint 2.2s var(--ease-in-out) infinite;
+}
+
+@keyframes scroll-hint {
+  0% {
+    transform: translateY(-101%);
+  }
+  55%,
+  100% {
+    transform: translateY(101%);
+  }
+}
+
+@media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
+  .hero__title {
+    font-size: calc(42vw * var(--display-scale));
+    line-height: 0.82;
+  }
+
+  .hero__title-inner {
+    flex-direction: column;
+    width: 100%;
+    padding-inline: calc(var(--gutter) * 0.6);
+    translate: 0 -2svh;
+  }
+
+  .hero__part:first-child {
+    align-self: flex-start;
+  }
+
+  .hero__part:last-child {
+    align-self: flex-end;
+  }
+
+  /* Le kicker reste dans la marge gauche, sans passer sur la capsule. */
+  .hero__kicker {
+    max-width: 24vw;
+  }
+
+  .hero__kicker span:first-child {
+    max-width: none;
+    white-space: nowrap;
+  }
+
+  /* Pas la place pour deux blocs en pied de hero : l'indication de scroll reste seule. */
+  .hero__facts {
+    display: none;
+  }
+}
+
+/* =============================== QUI SOMMES-NOUS =============================== */
+.about {
+  color: var(--cream);
+}
+
+.about__bg {
+  background: var(--red);
+}
+
+.about__mosaic {
+  color: var(--red-deep);
+  opacity: 0.38;
+}
+
+.about__front {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 2rem var(--gutter);
+  padding: clamp(6rem, 22svh, 15rem) var(--gutter) clamp(6rem, 20svh, 14rem);
+}
+
+.about__label {
+  grid-column: 1 / span 3;
+  color: var(--gold);
+  padding-top: 0.9em;
+}
+
+.about__text {
+  grid-column: 4 / span 8;
+  font-size: clamp(1.5rem, 0.9rem + 2.7vw, 3.7rem);
+  font-weight: 500;
+  line-height: 1.14;
+  letter-spacing: -0.015em;
+  text-wrap: pretty;
+}
+
+.about__word {
+  display: inline-block;
+  will-change: opacity, transform;
+}
+
+.about__signature {
+  grid-column: 4 / span 8;
+  color: var(--gold);
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .about__label,
+  .about__text,
+  .about__signature {
+    grid-column: 1 / -1;
+  }
+
+  .about__label {
+    padding-top: 0;
+  }
+}
+
+/* Scène : le texte tient dans l'écran (taille ajustée par main.ts), à gauche de la bouteille. */
+html.has-scenes .about__front {
+  grid-template-columns: minmax(0, 1fr);
+  align-content: center;
+  gap: clamp(1rem, 2.4svh, 2rem);
+  padding: clamp(5rem, 13svh, 8rem) var(--gutter) clamp(3rem, 9svh, 6rem);
+}
+
+html.has-scenes .about__label,
+html.has-scenes .about__text,
+html.has-scenes .about__signature {
+  grid-column: 1;
+  max-width: 62vw;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+@media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
+  html.has-scenes .about__label,
+  html.has-scenes .about__text,
+  html.has-scenes .about__signature {
+    max-width: none;
+  }
+}
+
+/* =============================== ARGUMENTS =============================== */
+.args {
+  display: flex;
+  flex-direction: column-reverse; /* le titre de section est dans le calque avant, écrit après la liste */
+  color: var(--ink);
+  padding: clamp(5rem, 14svh, 10rem) var(--gutter) clamp(5rem, 16svh, 12rem);
+}
+
+.args__bg {
+  background: var(--cream);
+}
+
+.args__mosaic {
+  color: var(--gold);
+  opacity: 0.12;
+}
+
+.args__label {
+  color: var(--red);
+  margin-bottom: clamp(2rem, 5vw, 4.5rem);
+}
+
+.args__item {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0 var(--gutter);
+  padding-block: clamp(1.8rem, 4.2vw, 4.2rem);
+  border-top: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
+}
+
+.args__item:last-child {
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
+}
+
+.args__index {
+  grid-column: 1 / span 2;
+  color: var(--red);
+  padding-top: 0.5em;
+  white-space: nowrap;
+}
+
+.args__body {
+  grid-column: 3 / -1;
+  min-width: 0;
+}
+
+.args__struck {
+  position: relative;
+  display: inline-block;
+  font-size: calc(clamp(1.35rem, 3.7vw, 4.6rem) * var(--display-scale));
+  line-height: 1;
+  color: color-mix(in srgb, var(--ink) 62%, var(--cream));
+  margin-bottom: 0.25em;
+}
+
+.args__struck s {
+  text-decoration: none;
+}
+
+.args__strike {
+  position: absolute;
+  left: -3%;
+  right: -3%;
+  top: 52%;
+  height: 0.1em;
+  background: var(--red);
+  transform-origin: left center;
+}
+
+.args__title {
+  font-size: calc(clamp(2.5rem, 8.4vw, 10.5rem) * var(--display-scale));
+  line-height: 0.92;
+  color: var(--red);
+  overflow: clip;
+  /* marge de sécurité pour les accents et les jambages rognés par overflow */
+  padding-block: 0.1em;
+  margin-block: -0.1em;
+  text-wrap: balance;
+}
+
+.args__title-inner {
+  display: block;
+  will-change: transform;
+}
+
+.args__note {
+  max-width: 40ch;
+  margin-top: clamp(0.9rem, 1.6vw, 1.6rem);
+}
+
+@media (max-width: 900px) {
+  .args__index,
+  .args__body {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Scène : un seul argument à l'écran à la fois, en très grand, à gauche de la bouteille. */
+html.has-scenes .args {
+  display: block;
+  padding: 0;
+}
+
+html.has-scenes .args__label {
+  position: absolute;
+  top: clamp(4.2rem, 11svh, 7.5rem);
+  left: var(--gutter);
+  margin: 0;
+}
+
+html.has-scenes .args__list {
+  position: absolute;
+  inset: 0;
+}
+
+html.has-scenes .args__item {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(0.8rem, 2svh, 1.6rem);
+  padding: clamp(7rem, 20svh, 12rem) var(--gutter) clamp(3rem, 10svh, 7rem);
+  border: 0;
+}
+
+/* Rythme asymétrique : un argument sur deux s'ancre en bas de l'écran. */
+html.has-scenes .args__item:nth-child(even) {
+  justify-content: flex-end;
+}
+
+html.has-scenes .args__index {
+  padding-top: 0;
+}
+
+html.has-scenes .args__body {
+  max-width: 61vw;
+}
+
+html.has-scenes .args__title {
+  font-size: calc(clamp(2.6rem, 7.6vw, 10rem) * var(--display-scale));
+}
+
+@media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
+  html.has-scenes .args__body {
+    max-width: none;
+  }
+
+  html.has-scenes .args__title {
+    font-size: calc(12.4vw * var(--display-scale));
+  }
+}
+
+/* =============================== DEVIS =============================== */
+.quote {
+  position: relative;
+  color: var(--cream);
+  color-scheme: dark;
+}
+
+.quote__pin {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 3rem var(--gutter);
+  align-items: start;
+  padding: clamp(5rem, 15svh, 11rem) var(--gutter) clamp(4rem, 10svh, 8rem);
+  background: var(--ink);
+}
+
+.quote__spacer {
+  display: none;
+}
+
+/*
+ * Scène : le devis arrive par-dessus les scènes fixes. Il se colle en haut de l'écran pendant
+ * un écran de scroll (le temps de sa révélation), puis défile normalement : le formulaire est
+ * plus haut que l'écran et doit rester atteignable au clavier.
+ */
+html.has-scenes .quote {
+  z-index: 40;
+  margin-top: -100vh;
+  margin-top: -100svh;
+}
+
+html.has-scenes .quote__pin {
+  position: sticky;
+  top: 0;
+  min-height: 100vh;
+  min-height: 100svh;
+}
+
+html.has-scenes .quote__spacer {
+  display: block;
+  height: 100vh;
+  height: 100svh;
+}
+
+html.has-scenes .site-footer {
+  z-index: 40;
+}
+
+.quote__head {
+  grid-column: 1 / span 5;
+  position: sticky;
+  top: clamp(4.5rem, 10svh, 7rem);
+}
+
+.quote__label {
+  color: var(--gold);
+  margin-bottom: 1.2rem;
+}
+
+.quote__title {
+  font-size: calc(clamp(4.6rem, 14.5vw, 17rem) * var(--display-scale));
+  line-height: 0.8;
+  margin-left: -0.04em;
+  color: var(--cream);
+}
+
+.quote__intro {
+  max-width: 34ch;
+  margin-top: clamp(1.5rem, 3vw, 2.6rem);
+}
+
+.quote__form-wrap {
+  grid-column: 7 / span 6;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .quote__head,
+  .quote__form-wrap {
+    grid-column: 1 / -1;
+  }
+
+  .quote__head {
+    position: static;
+  }
+}
+
+.form__legend {
+  color: color-mix(in srgb, var(--cream) 78%, var(--ink));
+  margin-bottom: 2rem;
+}
+
+.form__grid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem var(--gutter);
+}
+
+.field {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+
+.field--wide {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 560px) {
+  .form__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.field label {
+  font-size: var(--fs-small);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold);
+  transition: color 0.3s var(--ease-soft);
+}
+
+.field__opt {
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  color: color-mix(in srgb, var(--cream) 78%, var(--ink));
+}
+
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.55rem 0 0.65rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--cream) 42%, transparent);
+  border-radius: 0;
+  background-color: transparent;
+  font-size: clamp(1.05rem, 1rem + 0.35vw, 1.3rem);
+  color: var(--cream);
+  transition:
+    border-color 0.3s var(--ease-soft),
+    box-shadow 0.3s var(--ease-soft);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 7rem;
+  line-height: 1.4;
+}
+
+.field select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 1.6rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--cream) 50%), linear-gradient(135deg, var(--cream) 50%, transparent 50%);
+  background-position:
+    calc(100% - 0.75rem) 55%,
+    calc(100% - 0.35rem) 55%;
+  background-size:
+    0.4rem 0.4rem,
+    0.4rem 0.4rem;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.field select option {
+  background: var(--ink);
+  color: var(--cream);
+}
+
+.field input:hover,
+.field select:hover,
+.field textarea:hover {
+  border-bottom-color: var(--cream);
+}
+
+.field input:focus-visible,
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: none;
+  border-bottom-color: var(--gold);
+  box-shadow: 0 3px 0 0 var(--gold);
+}
+
+.field:focus-within label {
+  color: var(--cream);
+}
+
+.field__error {
+  min-height: 1.35rem;
+  margin-top: 0.4rem;
+  font-size: 0.86rem;
+  line-height: 1.3;
+  color: #ffb9ab;
+  opacity: 0;
+  transform: translateY(-0.3rem);
+  transition:
+    opacity 0.35s var(--ease-out),
+    transform 0.35s var(--ease-out);
+}
+
+.field.is-invalid .field__error {
+  opacity: 1;
+  transform: none;
+}
+
+.field.is-invalid input,
+.field.is-invalid select,
+.field.is-invalid textarea {
+  border-bottom-color: #ffb9ab;
+}
+
+.field__count {
+  margin-top: 0.4rem;
+  font-size: 0.78rem;
+  color: color-mix(in srgb, var(--cream) 78%, var(--ink));
+  text-align: right;
+}
+
+.field--trap {
+  position: absolute;
+  left: -200vw;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.form__turnstile:not(:empty) {
+  margin-top: 1rem;
+}
+
+.form__status {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  color: #ffb9ab;
+}
+
+.form__status:not(:empty) {
+  padding: 0.8rem 0 0.8rem 1rem;
+  border-left: 2px solid #ffb9ab;
+  animation: status-in 0.5s var(--ease-out);
+}
+
+@keyframes status-in {
+  from {
+    opacity: 0;
+    transform: translateX(-0.6rem);
+  }
+}
+
+.form__submit {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  width: 100%;
+  margin-top: 1.2rem;
+  padding: clamp(1.1rem, 2vw, 1.7rem) clamp(1.1rem, 2vw, 1.8rem);
+  border: 0;
+  border-radius: 0;
+  background: var(--cream);
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 1.1rem + 1.3vw, 2.4rem);
+  line-height: 1;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background-color 0.45s var(--ease-soft);
+}
+
+.form__submit:hover,
+.form__submit:focus-visible {
+  background: var(--gold);
+}
+
+.form__submit:focus-visible {
+  outline: 2px solid var(--cream);
+  outline-offset: 4px;
+}
+
+.form__submit-arrow {
+  font-family: var(--font-text);
+  transition: transform 0.6s var(--ease-out);
+}
+
+.form__submit:hover .form__submit-arrow {
+  transform: translateX(0.35em);
+}
+
+.form__submit-progress {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 4px;
+  background: var(--red);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.form__submit.is-loading {
+  cursor: progress;
+  background: var(--cream-dim);
+}
+
+.form__submit.is-loading .form__submit-arrow {
+  opacity: 0;
+}
+
+.form__submit.is-loading .form__submit-progress {
+  animation: submit-progress 1.4s var(--ease-in-out) infinite;
+}
+
+@keyframes submit-progress {
+  0% {
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+  50% {
+    transform: scaleX(1);
+    transform-origin: left center;
+  }
+  50.01% {
+    transform-origin: right center;
+  }
+  100% {
+    transform: scaleX(0);
+    transform-origin: right center;
+  }
+}
+
+.form__rgpd {
+  margin-top: 1.4rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--cream) 80%, var(--ink));
+  max-width: 62ch;
+}
+
+.form-success {
+  padding-block: 1rem 3rem;
+  outline: none;
+}
+
+.form-success__title {
+  font-size: calc(clamp(2.8rem, 6.8vw, 7.5rem) * var(--display-scale));
+  line-height: 0.9;
+  color: var(--gold);
+}
+
+.form-success__text {
+  max-width: 36ch;
+  margin-top: 1.5rem;
+  font-size: 1.15rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__scroll-line::after,
+  .form__submit.is-loading .form__submit-progress {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+  }
+}

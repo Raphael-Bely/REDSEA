@@ -1,0 +1,112 @@
+---
+import { PUBLIC_TURNSTILE_SITE_KEY } from 'astro:env/client';
+import { quote, rgpd } from '../content/site';
+import { ESTABLISHMENT_TYPES, VOLUMES, LIMITS, HONEYPOT_FIELD } from '../lib/quote-fields';
+---
+
+<div class="quote__form-wrap">
+  <form
+    class="form"
+    data-quote-form
+    action="/api/devis"
+    method="post"
+    novalidate
+    data-turnstile-sitekey={PUBLIC_TURNSTILE_SITE_KEY ?? ''}
+    data-label-submit={quote.submit}
+    data-label-sending={quote.sending}
+    data-error-generic={quote.errorGeneric}
+  >
+    <p class="form__legend label">Les champs marqués d’un <span aria-hidden="true">*</span><span class="sr-only">astérisque</span> sont obligatoires.</p>
+
+    <div class="form__grid">
+      <div class="field" data-field="name">
+        <label for="q-name">Nom et prénom <span aria-hidden="true">*</span></label>
+        <input id="q-name" name="name" type="text" autocomplete="name" required maxlength={LIMITS.name} aria-describedby="q-name-err" />
+        <p class="field__error" id="q-name-err" data-error></p>
+      </div>
+
+      <div class="field" data-field="establishment">
+        <label for="q-establishment">Nom de l’établissement <span aria-hidden="true">*</span></label>
+        <input id="q-establishment" name="establishment" type="text" autocomplete="organization" required maxlength={LIMITS.establishment} aria-describedby="q-establishment-err" />
+        <p class="field__error" id="q-establishment-err" data-error></p>
+      </div>
+
+      <div class="field" data-field="type">
+        <label for="q-type">Type d’établissement</label>
+        <select id="q-type" name="type" aria-describedby="q-type-err">
+          <option value="">Choisir…</option>
+          {ESTABLISHMENT_TYPES.map((o) => <option value={o.value}>{o.label}</option>)}
+        </select>
+        <p class="field__error" id="q-type-err" data-error></p>
+      </div>
+
+      <div class="field" data-field="city">
+        <label for="q-city">Ville</label>
+        <input id="q-city" name="city" type="text" autocomplete="address-level2" maxlength={LIMITS.city} aria-describedby="q-city-err" />
+        <p class="field__error" id="q-city-err" data-error></p>
+      </div>
+
+      <div class="field" data-field="email">
+        <label for="q-email">Email <span aria-hidden="true">*</span></label>
+        <input id="q-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength={LIMITS.email} aria-describedby="q-email-err" />
+        <p class="field__error" id="q-email-err" data-error></p>
+      </div>
+
+      <div class="field" data-field="phone">
+        <label for="q-phone">Téléphone <span class="field__opt">(optionnel)</span></label>
+        <input id="q-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel" maxlength={LIMITS.phone} aria-describedby="q-phone-err" />
+        <p class="field__error" id="q-phone-err" data-error></p>
+      </div>
+
+      <div class="field" data-field="volume">
+        <label for="q-volume">Volume estimé par mois</label>
+        <select id="q-volume" name="volume" aria-describedby="q-volume-err">
+          <option value="">Choisir…</option>
+          {VOLUMES.map((o) => <option value={o.value}>{o.label}</option>)}
+        </select>
+        <p class="field__error" id="q-volume-err" data-error></p>
+      </div>
+
+      <div class="field" data-field="startDate">
+        <label for="q-start">Démarrage souhaité <span class="field__opt">(optionnel)</span></label>
+        <input id="q-start" name="startDate" type="date" aria-describedby="q-start-err" />
+        <p class="field__error" id="q-start-err" data-error></p>
+      </div>
+
+      <div class="field field--wide" data-field="message">
+        <label for="q-message">Message <span class="field__opt">(optionnel)</span></label>
+        <textarea id="q-message" name="message" rows="4" maxlength={LIMITS.message} aria-describedby="q-message-count q-message-err"></textarea>
+        <p class="field__count" id="q-message-count"><span data-message-count>0</span> / {LIMITS.message} caractères</p>
+        <p class="field__error" id="q-message-err" data-error></p>
+      </div>
+
+      <!-- Champ piège anti-robot : invisible, à laisser vide. -->
+      <div class="field--trap" aria-hidden="true">
+        <label for="q-site">Ne pas remplir ce champ</label>
+        <input id="q-site" name={HONEYPOT_FIELD} type="text" tabindex="-1" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="form__turnstile" data-turnstile></div>
+
+    <p class="form__status" data-form-status role="alert" aria-live="assertive"></p>
+
+    <button class="form__submit" type="submit" data-submit>
+      <span class="form__submit-label" data-submit-label>{quote.submit}</span>
+      <span class="form__submit-arrow" aria-hidden="true">→</span>
+      <span class="form__submit-progress" aria-hidden="true"></span>
+    </button>
+
+    <p class="form__rgpd">
+      Les informations saisies sont traitées par {rgpd.controller}, responsable du traitement, pour répondre à votre
+      demande de devis (base légale : mesures précontractuelles prises à votre demande). Elles sont conservées{' '}
+      {rgpd.retention}. Vous disposez d’un droit d’accès, de rectification, d’effacement et d’opposition : écrivez à{' '}
+      {rgpd.rightsEmail}. En savoir plus : <a href="/confidentialite">politique de confidentialité</a>.
+    </p>
+  </form>
+
+  <div class="form-success" data-form-success tabindex="-1" hidden>
+    <p class="form-success__title display">{quote.successTitle}</p>
+    <p class="form-success__text">{quote.successText}</p>
+  </div>
+</div>

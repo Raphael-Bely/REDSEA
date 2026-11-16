@@ -1,0 +1,69 @@
+---
+import Legal from '../layouts/Legal.astro';
+import { legal, brand } from '../content/site';
+const { editor, host } = legal;
+---
+
+<Legal
+  title="Mentions légales"
+  description="Mentions légales du site REDSEA : éditeur, directeur de la publication, hébergeur."
+>
+  <h2>Éditeur du site</h2>
+  <dl>
+    <dt>Nom / raison sociale</dt>
+    <dd>{editor.name}</dd>
+    <dt>Statut</dt>
+    <dd>{editor.status}</dd>
+    <dt>SIREN / RCS</dt>
+    <dd>{editor.siren}</dd>
+    <dt>TVA intracommunautaire</dt>
+    <dd>{editor.vat}</dd>
+    <dt>Adresse</dt>
+    <dd>{editor.address}</dd>
+    <dt>Email</dt>
+    <dd>{editor.email}</dd>
+    <dt>Téléphone</dt>
+    <dd>{editor.phone}</dd>
+  </dl>
+
+  <h2>Directeur de la publication</h2>
+  <p>{legal.publicationDirector}</p>
+
+  <h2>Hébergeur</h2>
+  <dl>
+    <dt>Nom</dt>
+    <dd>{host.name}</dd>
+    <dt>Adresse</dt>
+    <dd>{host.address}</dd>
+    <dt>Téléphone</dt>
+    <dd>{host.phone}</dd>
+  </dl>
+
+  <h2>Fabrication</h2>
+  <p>Les boissons {brand.name} sont fabriquées à la {legal.manufacturer}.</p>
+
+  <h2>Propriété intellectuelle</h2>
+  <p>
+    L’ensemble des éléments de ce site (textes, photographies, illustrations, logo, étiquette, marque {brand.name}) est
+    protégé par le droit de la propriété intellectuelle. Toute reproduction ou représentation, totale ou partielle, sans
+    autorisation écrite préalable est interdite. [À REMPLIR : préciser le titulaire des droits et, le cas échéant, le
+    numéro de dépôt de la marque à l’INPI.]
+  </p>
+
+  <h2>Données personnelles et cookies</h2>
+  <p>
+    Ce site ne dépose aucun cookie ni traceur tiers et n’utilise aucun outil de mesure d’audience nécessitant un
+    consentement. Les données transmises via le formulaire de demande de devis sont traitées dans les conditions
+    décrites dans la <a href="/confidentialite">politique de confidentialité</a>.
+  </p>
+
+  <h2>Responsabilité</h2>
+  <p>
+    Les informations publiées sur ce site sont fournies à titre indicatif et peuvent être modifiées à tout moment. Ce
+    site s’adresse aux professionnels (bars, cafés, restaurants, épiceries, événementiel) ; il ne propose pas de vente
+    en ligne. [À REMPLIR : compléter si nécessaire.]
+  </p>
+
+  <h2>Contact</h2>
+  <p>Pour toute question relative au site : {brand.contactEmail}</p>
+</Legal>

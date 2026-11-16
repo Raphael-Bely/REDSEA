@@ -1,0 +1,111 @@
+---
+import '../styles/global.css';
+import { brand, seo, nav, analytics } from '../content/site';
+import hibiscus from '../assets/hibiscus.png';
+import { Image } from 'astro:assets';
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** 'light' = fond crème en haut de page, 'dark' = fond rouge/noir. */
+  headerTheme?: 'light' | 'dark';
+  noindex?: boolean;
+  /** En-tête non fixe (pages sans script de thème : il ne doit pas survoler le footer sombre). */
+  staticHeader?: boolean;
+}
+
+// Preload de la police d'affichage : même URL que dans src/styles/fonts.css.
+const DISPLAY_FONT_URL = '/fonts/caprasimo-400.woff2';
+const TEXT_FONT_URL = '/fonts/schibsted-grotesk-var.woff2';
+
+const { title = seo.title, description = seo.description, headerTheme = 'light', noindex = false, staticHeader = false } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL(seo.ogImage, Astro.site);
+const year = new Date().getFullYear();
+const isHome = Astro.url.pathname === '/';
+const quoteHref = isHome ? '#devis' : '/#devis';
+---
+
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="theme-color" content="#7a0a10" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+    <link rel="preload" href={DISPLAY_FONT_URL} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={TEXT_FONT_URL} as="font" type="font/woff2" crossorigin />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={brand.name} />
+    <meta property="og:locale" content="fr_FR" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={seo.ogImageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+
+    <noscript><link rel="stylesheet" href="/noscript.css" /></noscript>
+    {
+      analytics.enabled && analytics.scriptSrc && (
+        <script is:inline defer data-domain={analytics.domain} src={analytics.scriptSrc} />
+      )
+    }
+  </head>
+  <body>
+    <a class="skip-link" href="#contenu">Aller au contenu</a>
+
+    <header class:list={['site-header', { 'site-header--static': staticHeader }]} data-header data-theme={headerTheme} data-at-quote="false">
+      <a class="site-header__brand" href="/" aria-label={`${brand.name}, retour à l’accueil`}>{brand.name}</a>
+      <a class="site-header__cta label" href={quoteHref}>{nav.quoteLabel}</a>
+    </header>
+
+    <slot name="before" />
+
+    <main id="contenu">
+      <slot />
+    </main>
+
+    <footer class="site-footer" data-theme-zone="dark">
+      <div class="site-footer__grid">
+        <a class="site-footer__logo" href="/" aria-label={`${brand.name}, retour à l’accueil`}>
+          <Image src={hibiscus} alt="" width={96} loading="lazy" />
+          <span>{brand.name}</span>
+        </a>
+        <div class="site-footer__col">
+          <p class="label">Contact</p>
+          <span>{brand.contactEmail}</span>
+          <a href={brand.instagram.url} rel="noopener noreferrer" target="_blank">
+            Instagram {brand.instagram.handle}<span class="sr-only"> (nouvel onglet)</span>
+          </a>
+        </div>
+        <nav class="site-footer__col" aria-label="Informations légales">
+          <p class="label">Légal</p>
+          <a href="/mentions-legales">Mentions légales</a>
+          <a href="/confidentialite">Politique de confidentialité</a>
+        </nav>
+        <div class="site-footer__col">
+          <p class="label">Fabrication</p>
+          <span>Brasserie Gasconha, Pessac</span>
+        </div>
+        <p class="site-footer__copy">© {year} {brand.name}. Tous droits réservés.</p>
+      </div>
+      <p class="site-footer__word display" aria-hidden="true">{brand.name}</p>
+    </footer>
+
+    <div class="grain" aria-hidden="true"></div>
+  </body>
+</html>
