@@ -8,6 +8,8 @@
   --cream-dim: #e6d2ae;
   --gold: #c9a35c;
   --ink: #1a0d0b;
+  /** Messages d'erreur du formulaire (sur le fond sombre du devis). */
+  --error: #ffb9ab;
 
   --gutter: clamp(1.1rem, 3.4vw, 3.25rem);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -16,6 +18,27 @@
 
   --fs-small: clamp(0.72rem, 0.68rem + 0.2vw, 0.84rem);
   --fs-body: clamp(1rem, 0.94rem + 0.3vw, 1.2rem);
+}
+
+/*
+ * Palette « noir » (npm run dev --noir) : étiquette noire, texte rose.
+ * Les rôles s'inversent : le fond clair devient noir, le rouge devient le rose de l'étiquette
+ * (relevé sur rose.pdf), et les sections sombres (devis, pied de page) passent en rose pâle.
+ * Rien d'autre à changer : tout le site est dessiné avec ces jetons.
+ */
+:root[data-palette='noir'] {
+  --red: #f4ab9f;
+  --red-deep: #e3897d;
+  --cream: #1c1719;
+  --cream-dim: #2b2427;
+  --gold: #c9a35c;
+  --ink: #f7e1da;
+  --error: #b3261e;
+}
+
+/* Sur les fonds rose et rose pâle, l'or de l'étiquette manque de contraste : bronze foncé. */
+:root[data-palette='noir'] :is(.about, .loader, .quote, .site-footer) {
+  --gold: #6e4c1c;
 }
 
 /* ---------- Base ---------- */

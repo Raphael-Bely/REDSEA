@@ -14,6 +14,7 @@ import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
 import type { BottleController } from '../three/Bottle';
 import { initQuoteForm } from './quote-form';
+import { PALETTE_ASSETS } from '../palette';
 
 gsap.registerPlugin(ScrollTrigger, CustomEase);
 
@@ -22,12 +23,8 @@ const EASE_OUT = CustomEase.create('redsea-out', '0.16, 1, 0.3, 1');
 const EASE_CURTAIN = CustomEase.create('redsea-curtain', '0.76, 0, 0.24, 1');
 const EASE_SOFT = CustomEase.create('redsea-soft', '0.33, 0.01, 0.12, 1');
 
-const TEXTURES = {
-  label: '/textures/label.webp',
-  /** Étiquette ×3 pour les écrans d'ordinateur, où la bouteille est affichée en grand. */
-  labelHd: '/textures/label-hd.webp',
-  cap: '/textures/cap.png',
-} as const;
+/** Textures de la bouteille : celles de la palette active (voir src/palette.ts). */
+const TEXTURES = PALETTE_ASSETS;
 
 /**
  * Durée de scroll de chaque scène, en écrans (1 = 100svh). À garder en phase avec les hauteurs
@@ -37,9 +34,20 @@ const TEXTURES = {
 const SCENE_LENGTH = { hero: 2.2, about: 2.4 } as const;
 const SCRUB = 0.5;
 
+/**
+ * Couleur d'un jeton CSS (#rrggbb) en sRGB 0–1. Les fonds des scènes viennent des jetons de la
+ * palette active (beige/rouge ou noir/rose) : le verre de la bouteille les réfracte.
+ */
+function tokenColor(token: string, fallback: string) {
+  const value = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  const hex = /^#[0-9a-f]{6}$/i.test(value) ? value : fallback;
+  const n = Number.parseInt(hex.slice(1), 16);
+  return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
+}
+
 /** Couleurs de fond des scènes (sRGB 0–1) : le verre de la bouteille les réfracte. */
-const CREAM = { r: 243 / 255, g: 226 / 255, b: 196 / 255 };
-const RED = { r: 122 / 255, g: 10 / 255, b: 16 / 255 };
+const CREAM = tokenColor('--cream', '#f3e2c4');
+const RED = tokenColor('--red', '#7a0a10');
 
 const $ = <T extends Element = HTMLElement>(selector: string, root: ParentNode = document) =>
   root.querySelector<T>(selector);
@@ -177,10 +185,15 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
   // Three.js n'est téléchargé qu'ici, dans un chunk séparé.
   const { createBottle } = await import('../three/Bottle');
   onProgress(0.25);
-  const bottle = await createBottle({
-    canvas,
+  const textures = {
+    // Étiquette haute définition sur ordinateur, où la bouteille est affichée en grand.
     labelUrl: smallScreen ? TEXTURES.label : TEXTURES.labelHd,
     capUrl: TEXTURES.cap,
+    capInk: TEXTURES.capInk,
+  };
+  const bottle = await createBottle({
+    canvas,
+    ...textures,
     lowPower: smallScreen,
     onProgress: (ratio) => onProgress(0.25 + ratio * 0.75),
     onContextLost: () => {

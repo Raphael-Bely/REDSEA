@@ -3,6 +3,7 @@ import '../styles/global.css';
 import { brand, seo, nav, analytics } from '../content/site';
 import hibiscus from '../assets/hibiscus.png';
 import { Image } from 'astro:assets';
+import { PALETTE, PALETTE_ASSETS } from '../palette';
 
 interface Props {
   title?: string;
@@ -27,7 +28,7 @@ const quoteHref = isHome ? '#devis' : '/#devis';
 ---
 
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-palette={PALETTE}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -35,7 +36,7 @@ const quoteHref = isHome ? '#devis' : '/#devis';
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex" />}
-    <meta name="theme-color" content="#7a0a10" />
+    <meta name="theme-color" content={PALETTE_ASSETS.themeColor} />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <link rel="preload" href={DISPLAY_FONT_URL} as="font" type="font/woff2" crossorigin />

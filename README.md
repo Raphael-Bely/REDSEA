@@ -42,6 +42,26 @@ En développement, **sans clé Resend ni Turnstile**, le formulaire fonctionne q
 
 Paramètres d'URL utiles pour tester : `?bottle=3d` force la scène 3D, `?bottle=fallback` force l'image de secours.
 
+### Deux palettes : classique et noir
+
+Le site existe en deux habillages, choisis au lancement :
+
+| Commande | Palette |
+| --- | --- |
+| `npm run dev` | **classique** : étiquette beige, site beige et rouge (par défaut) |
+| `npm run dev --noir` | **noir** : étiquette noire au texte rose, site noir et rose |
+| `npm run build --noir` | build de production en palette noir |
+
+Au démarrage, la console indique la palette active (`[redsea-palette] Palette « noir » …`). Sur Vercel, définir la variable d'environnement `REDSEA_PALETTE=noir` pour déployer la version noire.
+
+Où ça se règle :
+
+- **couleurs** : jetons CSS dans `src/styles/global.css` (bloc `:root[data-palette='noir']`). Les rôles s'inversent : le fond beige devient noir, le rouge devient le rose de l'étiquette, les sections sombres (devis, pied de page) passent en rose pâle ; sur les fonds roses, l'or devient un bronze foncé pour rester lisible ;
+- **textures de la bouteille** : `src/palette.ts` (étiquette, encre du logo de la capsule) ;
+- **étiquette noire** : générée depuis `rose.pdf` par `python3 scripts/prepare-noir.py` (recadrage sur l'étiquette, retrait des 8 mm recouverts par le recouvrement, logo recalé face caméra) → `public/textures/noir/`. À relancer si le PDF change.
+
+Non décliné en noir pour l'instant : l'image de secours de la bouteille (photo beige, affichée sans WebGL ou avec « réduire les animations »), l'image de partage `og.jpg` et les favicons.
+
 ---
 
 ## 2. Ce qu'il reste à remplir
