@@ -41,6 +41,46 @@
   --gold: #6e4c1c;
 }
 
+/*
+ * Grandes lettres roses facettées, comme « REDSEA » et « BISSAP » sur l'étiquette noire :
+ * le texte est rempli d'un motif de triangles dans les roses relevés sur l'étiquette
+ * (public/textures/noir/lowpoly.svg, généré par scripts/prepare-noir.py). La taille du motif
+ * suit celle du texte (em) : mêmes proportions de facettes sur tous les titres.
+ * Sans prise en charge de background-clip: text, le texte reste rose uni.
+ */
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  :root[data-palette='noir'] :is(.hero__letter, .args__title-inner, .legal__title, .curtain--cream .curtain__word) {
+    background: url('/textures/noir/lowpoly.svg') 0 0 / 3.6em 3.6em repeat var(--red);
+    background-position:
+      calc(var(--facet-i, 0) * 1.37em + var(--facet-part, 0em))
+      calc(var(--facet-i, 0) * 0.83em + var(--facet-part, 0em));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Chaque lettre du grand titre prend une autre zone du motif : jamais deux lettres pareilles. */
+  :root[data-palette='noir'] .hero__part:nth-child(2) {
+    --facet-part: 1.9em;
+  }
+  :root[data-palette='noir'] .hero__letter:nth-child(2) {
+    --facet-i: 1;
+  }
+  :root[data-palette='noir'] .hero__letter:nth-child(3) {
+    --facet-i: 2;
+  }
+  :root[data-palette='noir'] .hero__letter:nth-child(4) {
+    --facet-i: 3;
+  }
+  :root[data-palette='noir'] .hero__letter:nth-child(5) {
+    --facet-i: 4;
+  }
+  :root[data-palette='noir'] .hero__letter:nth-child(n + 6) {
+    --facet-i: 5;
+  }
+}
+
 /* ---------- Base ---------- */
 *,
 *::before,

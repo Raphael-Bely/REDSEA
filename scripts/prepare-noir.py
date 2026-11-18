@@ -6,6 +6,7 @@ une bande d'annotations en bas).
 
   rose.pdf -> public/textures/noir/label-hd.webp  (ordinateur, pleine définition)
            -> public/textures/noir/label.webp     (mobile, 1368 px de large)
+           -> public/textures/noir/lowpoly.svg    (facettes roses des grandes lettres du site)
 
 Traitement :
   - on ne garde que l'étiquette (les 1620 premières lignes, ratio 197/90) ;
@@ -14,7 +15,10 @@ Traitement :
     tour de la bouteille ;
   - on décale l'image en boucle pour que le centre du logo tombe au même endroit que sur
     l'étiquette beige (BOTTLE.labelFrontU dans src/three/Bottle.ts) : le logo arrive face
-    caméra sans toucher au code 3D. La jointure reste entre le texte du dos et « REDSEA ».
+    caméra sans toucher au code 3D. La jointure reste entre le texte du dos et « REDSEA » ;
+  - motif « low poly » : les lettres roses de l'étiquette sont facettées en triangles de
+    roses différents. On relève ces roses sur l'étiquette (k-moyennes) et on en tire un motif
+    de triangles raccordable, appliqué aux grands titres du site (voir global.css).
 
 Dépendances : poppler-utils (pdfimages), Pillow, numpy.
 Usage : python3 scripts/prepare-noir.py
@@ -48,6 +52,72 @@ def extract_page_image(pdf: Path) -> Image.Image:
         return Image.open(files[0]).convert("RGB").copy()
 
 
+def pink_palette(label: np.ndarray, count: int = 8) -> list[tuple[tuple[int, int, int], float]]:
+    """Roses des lettres facettées (k-moyennes), avec leur fréquence. L'or des feuilles est exclu."""
+    px = label.reshape(-1, 3).astype(float)
+    r, g, b = px[:, 0], px[:, 1], px[:, 2]
+    px = px[(r > 200) & (g > 110) & (r - b > 40) & (r - g > 25) & (g - b > -10) & (g - b < 40) & (b > 100)]
+    rng = np.random.default_rng(1)
+    px = px[rng.choice(len(px), min(60000, len(px)), replace=False)]
+    centers = px[rng.choice(len(px), count, replace=False)]
+    for _ in range(40):
+        nearest = ((px[:, None, :] - centers[None]) ** 2).sum(-1).argmin(1)
+        centers = np.array([px[nearest == i].mean(0) if (nearest == i).any() else centers[i] for i in range(count)])
+    weights = np.bincount(nearest, minlength=count) / len(nearest)
+    return [(tuple(int(round(v)) for v in c), float(w)) for c, w in zip(centers, weights)]
+
+
+def lowpoly_svg(palette: list[tuple[tuple[int, int, int], float]], cells: int = 9, size: int = 900) -> str:
+    """
+    Motif de triangles raccordable (tuile carrée) : grille de sommets décalés au hasard, chaque
+    case coupée selon une diagonale au hasard, chaque triangle d'un rose tiré selon les
+    fréquences relevées. Les sommets du bord droit/bas recopient ceux du bord gauche/haut et
+    les triangles qui débordent sont redessinés de l'autre côté : la tuile se répète sans couture.
+    """
+    rng = np.random.default_rng(20261118)
+    step = size / cells
+    jitter = rng.uniform(-0.36, 0.36, size=(cells, cells, 2)) * step
+
+    def vertex(i: int, j: int) -> np.ndarray:
+        base = np.array([i * step, j * step])
+        return base + jitter[i % cells, j % cells]
+
+    colors = [c for c, _ in palette]
+    # Tirage à mi-chemin entre les fréquences relevées et un tirage uniforme : les roses
+    # soutenus restent assez présents pour que les facettes se lisent, comme sur l'étiquette.
+    weights = np.array([w for _, w in palette])
+    weights = 0.5 * weights / weights.sum() + 0.5 / len(weights)
+    triangles = []
+    for i in range(cells):
+        for j in range(cells):
+            a, b, c, d = vertex(i, j), vertex(i + 1, j), vertex(i + 1, j + 1), vertex(i, j + 1)
+            pairs = [(a, b, c), (a, c, d)] if rng.random() < 0.5 else [(a, b, d), (b, c, d)]
+            first = rng.choice(len(colors), p=weights)
+            # Les deux triangles d'une même case ne prennent jamais la même couleur.
+            others = weights.copy()
+            others[first] = 0
+            second = rng.choice(len(colors), p=others / others.sum())
+            for tri, index in zip(pairs, (first, second)):
+                triangles.append((np.array(tri), colors[index]))
+
+    shapes = []
+    for points, (r, g, b) in triangles:
+        fill = f"#{r:02x}{g:02x}{b:02x}"
+        for dx in (-size, 0, size):
+            for dy in (-size, 0, size):
+                moved = points + (dx, dy)
+                if moved[:, 0].max() < 0 or moved[:, 0].min() > size or moved[:, 1].max() < 0 or moved[:, 1].min() > size:
+                    continue
+                coords = " ".join(f"{x:.1f},{y:.1f}" for x, y in moved)
+                # Contour de la même couleur : bouche les liserés d'anticrénelage entre triangles.
+                shapes.append(f'<polygon points="{coords}" fill="{fill}" stroke="{fill}" stroke-width="1.2" stroke-linejoin="round"/>')
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {size} {size}" width="{size}" height="{size}">'
+        + "".join(shapes)
+        + "</svg>\n"
+    )
+
+
 def main() -> None:
     page = extract_page_image(ROOT / "rose.pdf")
     width = page.width
@@ -72,6 +142,10 @@ def main() -> None:
     hd.save(OUT / "label-hd.webp", quality=92, method=6)
     small = hd.resize((1368, round(1368 * h / w)), Image.LANCZOS)
     small.save(OUT / "label.webp", quality=90, method=6)
+
+    palette = pink_palette(label)
+    (OUT / "lowpoly.svg").write_text(lowpoly_svg(palette))
+    print("roses :", ", ".join("#%02x%02x%02x" % c for c, _ in sorted(palette, key=lambda p: sum(p[0]))))
     print(f"label-hd {hd.size}, label {small.size}, logo à u={logo_u:.3f}, décalage {shift} px")
 
 

@@ -58,7 +58,8 @@ Où ça se règle :
 
 - **couleurs** : jetons CSS dans `src/styles/global.css` (bloc `:root[data-palette='noir']`). Les rôles s'inversent : le fond beige devient noir, le rouge devient le rose de l'étiquette, les sections sombres (devis, pied de page) passent en rose pâle ; sur les fonds roses, l'or devient un bronze foncé pour rester lisible ;
 - **textures de la bouteille** : `src/palette.ts` (étiquette, encre du logo de la capsule) ;
-- **étiquette noire** : générée depuis `rose.pdf` par `python3 scripts/prepare-noir.py` (recadrage sur l'étiquette, retrait des 8 mm recouverts par le recouvrement, logo recalé face caméra) → `public/textures/noir/`. À relancer si le PDF change.
+- **lettres facettées** : comme « REDSEA » et « BISSAP » sur l'étiquette noire, les grands titres roses (titre du hero, titres des arguments, rideau « Devis », titres des pages légales) sont remplis d'un motif de triangles dans les roses relevés sur l'étiquette (`public/textures/noir/lowpoly.svg`, règle `background-clip: text` dans `global.css`) ;
+- **étiquette noire et motif de facettes** : générés depuis `rose.pdf` par `python3 scripts/prepare-noir.py` (recadrage sur l'étiquette, retrait des 8 mm recouverts par le recouvrement, logo recalé face caméra, roses des facettes relevés sur l'étiquette) → `public/textures/noir/`. À relancer si le PDF change.
 
 Non décliné en noir pour l'instant : l'image de secours de la bouteille (photo beige, affichée sans WebGL ou avec « réduire les animations »), l'image de partage `og.jpg` et les favicons.
 
