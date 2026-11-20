@@ -12,7 +12,7 @@ export const brand = {
   product: 'Bissap',
   baseline: 'Infusion de fleurs d’hibiscus',
   /** Email de contact public, affiché dans le footer et les pages légales. */
-  contactEmail: '[contact@domaine]',
+  contactEmail: 'redseabissap@gmail.com',
   instagram: { handle: '@redsea_bissap', url: 'https://www.instagram.com/redsea_bissap/' },
 } as const;
 
@@ -42,14 +42,10 @@ export const hero = {
 
 export const about = {
   label: 'Qui sommes-nous',
-  /**
-   * [TEXTE À REMPLIR] — environ 80 mots. Le paragraphe ci-dessous est un
-   * placeholder rédigé à partir des seules informations de l'étiquette :
-   * à remplacer par votre histoire.
-   */
+  /** Environ 80 mots : le texte est ajusté automatiquement pour remplir l'écran. */
   text:
-    '[TEXTE À REMPLIR] REDSEA est né à Bordeaux d’une envie simple : servir le bissap comme on le boit à Dakar, sans le dénaturer. Des fleurs d’hibiscus du Sénégal, infusées puis mises en bouteille à la Brasserie Gasconha, à Pessac. Une boisson rouge profond, servie fraîche, pensée pour les comptoirs, les terrasses et les cartes qui cherchent autre chose qu’un soda. Ici, racontez en quelques phrases qui vous êtes, d’où vient la recette et pourquoi vous la proposez aux bars, cafés et restaurants.',
-  signature: '[Prénom Nom — fondateur·rice, À REMPLIR]',
+    'Derrière REDSEA, nous sommes cinq étudiants à Bordeaux, avec une envie simple : servir le bissap comme on le boit à Dakar. Des fleurs d’hibiscus du Sénégal et une recette travaillée et retravaillée par nos soins pour atteindre le mix parfait, puis brassée à la Brasserie Gasconha, à Pessac. Une boisson rouge profond, servie fraîche, pensée pour les comptoirs, les terrasses et les cartes qui cherchent autre chose qu’un soda.',
+  signature: 'L’équipe REDSEA',
 } as const;
 
 export type Argument = {
@@ -65,20 +61,20 @@ export const argumentsSection = {
     {
       struck: 'Sirop industriel',
       title: 'Fleurs d’hibiscus infusées',
-      note: '[À REMPLIR] Une phrase sur l’infusion : les fleurs séchées, le temps, le geste.',
+      note: 'Une vraie infusion de fleurs d’hibiscus, faite par nos soins selon notre recette.',
     },
     {
       title: 'Hibiscus du Sénégal',
-      note: '[À REMPLIR] Une phrase sur l’origine des fleurs et la filière.',
+      note: 'Nos fleurs viennent du Sénégal, où le bissap se boit au quotidien.',
     },
     {
       title: 'Brassé à Pessac',
-      note: '[À REMPLIR] Une phrase sur la fabrication à la Brasserie Gasconha.',
+      note: 'Brassé à la Brasserie Gasconha, à Pessac, et vendu en direct aux établissements : un circuit court.',
     },
     {
       struck: 'Canette',
       title: 'Verre 33 cl',
-      note: '[À REMPLIR] Une phrase sur le format : service à table, conditionnement, livraison.',
+      note: 'Une bouteille en verre, à servir bien fraîche, au comptoir comme à table.',
     },
   ] satisfies Argument[],
 } as const;
@@ -87,18 +83,24 @@ export const quote = {
   label: 'Professionnels',
   title: 'Devis',
   intro:
-    'Bar, café, restaurant, épicerie fine ou événement : dites-nous ce qu’il vous faut, nous revenons vers vous avec un tarif. [À REMPLIR : délai de réponse, zone de livraison, minimum de commande.]',
+    'Bar, café, restaurant, épicerie fine ou événement : dites-nous ce qu’il vous faut, nous revenons vers vous avec un tarif.',
   submit: 'Envoyer la demande',
   sending: 'Envoi en cours…',
   successTitle: 'Demande envoyée.',
-  successText: 'Merci. Nous vous répondons par email très vite. [À REMPLIR : délai]',
+  successText: 'Merci. Nous vous répondons par email très vite.',
   errorGeneric: 'L’envoi a échoué. Réessayez dans un instant ou écrivez-nous directement.',
 } as const;
 
 /** Mention d'information RGPD de premier niveau, affichée sous le bouton du formulaire. */
 export const rgpd = {
-  controller: '[NOM DU RESPONSABLE DE TRAITEMENT]',
-  rightsEmail: '[email de contact RGPD]',
+  /**
+   * Responsable du traitement = celui qui collecte les demandes de devis et décide de leur usage,
+   * c'est-à-dire REDSEA. Son identité légale complète (nom, statut, adresse) figure dans les
+   * mentions légales (`legal.editor`), auxquelles la politique de confidentialité renvoie.
+   */
+  controller: 'REDSEA',
+  /** Adresse où écrire pour exercer ses droits (accès, rectification, effacement…). */
+  rightsEmail: 'redseabissap@gmail.com',
   retention: '3 ans après le dernier contact',
 } as const;
 
@@ -111,7 +113,7 @@ export const legal = {
     siren: '[SIREN / numéro RCS — À REMPLIR]',
     vat: '[N° de TVA intracommunautaire, si applicable — À REMPLIR]',
     address: '[Adresse du siège — À REMPLIR]',
-    email: '[Email — À REMPLIR]',
+    email: 'redseabissap@gmail.com',
     phone: '[Téléphone — À REMPLIR]',
   },
   publicationDirector: '[Nom du directeur ou de la directrice de la publication — À REMPLIR]',

@@ -215,6 +215,9 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
     const visible = scenesOnScreen && !document.hidden && Math.abs(pose.x) < 0.82 && Math.abs(y) < 1.3;
     if (visible !== running) {
       running = visible;
+      // Rendu arrêté = le canvas garderait sa dernière image (bouteille figée au milieu de
+      // l'écran si des images ont été sautées pendant un scroll rapide) : on le masque.
+      canvas.style.visibility = visible ? '' : 'hidden';
       if (visible) bottle.start();
       else {
         bottle.stop();
@@ -377,7 +380,6 @@ function setupScenes({ fallback }: SceneOptions) {
   if (!header || !hero || !about || !args || !quote || !quotePin) return;
 
   const items = $$('[data-arg]', args);
-  args.style.setProperty('--arg-count', String(items.length));
 
   const parts = $$('[data-hero-part]', hero);
   const letters = $$('[data-hero-letter]', hero);
@@ -385,11 +387,10 @@ function setupScenes({ fallback }: SceneOptions) {
   const aboutFront = $('[data-about-front]', about);
   const argsBg = $('[data-scene-bg]', args);
   const argsLabel = $('[data-args-label]', args);
+  const argsLayers = $$('.scene__back, .scene__front', args);
   const fallbackImage = fallback ? $('[data-bottle-fallback]') : null;
   const drift = [-7, 5, -3, 6, -5, 8]; // décalage vertical de chaque lettre (svh)
   const twist = [-5, 3, -2, 4, -3, 5]; // rotation de chaque lettre (deg)
-  /** Face de l'étiquette montrée pour chaque argument (radians, 0 = logo de face). */
-  const faces = [0, -0.5, 2.95, Math.PI * 2 + 0.25];
 
   fitAboutText();
   ScrollTrigger.addEventListener('refreshInit', fitAboutText);
@@ -479,8 +480,10 @@ function setupScenes({ fallback }: SceneOptions) {
 
     // … puis il se disperse pendant que le rouge du bissap envahit l'écran depuis la bouteille.
     if (compact) {
-      heroTl.to(parts[0], { yPercent: -150, duration: 0.7, ease: 'power2.in' }, 1.25);
-      heroTl.to(parts[1], { yPercent: 150, duration: 0.7, ease: 'power2.in' }, 1.25);
+      // En hauteur d'écran (et non en % des lettres) : les deux moitiés sortent vraiment de
+      // l'écran, sinon elles restent visibles par-dessus les scènes suivantes sur téléphone.
+      heroTl.to(parts[0], { y: () => -vh() * 0.8, duration: 0.7, ease: 'power2.in' }, 1.25);
+      heroTl.to(parts[1], { y: () => vh() * 0.8, duration: 0.7, ease: 'power2.in' }, 1.25);
       heroTl.to(pose, { x: 1, tiltZ: -0.3, duration: 0.75, ease: 'power2.in' }, 1.25);
     } else {
       heroTl.to(parts[0], { x: () => -vw() * 0.8, duration: 0.75, ease: 'power2.in' }, 1.25);
@@ -526,54 +529,52 @@ function setupScenes({ fallback }: SceneOptions) {
       1.7,
     );
     aboutTl.to(backdrop, { ...CREAM, duration: 0.3 }, 1.92);
-    aboutTl.fromTo(argsLabel, { opacity: 0 }, { opacity: 1, duration: 0.2 }, 2.15);
     aboutTl.set({}, {}, SCENE_LENGTH.about);
 
     /* ----------------------------- Scène 3 : arguments ---------------------------- */
-    // Un argument par écran de scroll ; le dernier écran sert à la sortie vers le devis.
-    const argsTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: scrollTrigger(args) });
+    // Les quatre arguments tiennent sur un seul écran. Ils ne suivent pas le scroll : ils
+    // apparaissent d'un bloc quand la section arrive (le fond crème a presque fini de balayer
+    // l'écran), et s'effacent si l'on remonte au-dessus, pour rejouer à la prochaine arrivée.
+    const argsReveal = gsap.timeline({ paused: true, defaults: { ease: EASE_OUT } });
+    gsap.set(argsLabel, { opacity: 0, y: 12 });
+    argsReveal.to(argsLabel, { opacity: 1, y: 0, duration: 0.6 }, 0);
     items.forEach((item, i) => {
+      const at = 0.12 + i * 0.16;
       const title = $('[data-arg-title]', item);
       const struck = $('[data-arg-struck]', item);
       const strike = $('[data-arg-strike]', item);
       const details = $$('[data-arg-index], [data-arg-note]', item);
-      const last = i === items.length - 1;
-
-      argsTl.fromTo(item, { opacity: 0 }, { opacity: 1, duration: 0.1 }, i);
+      gsap.set(item, { opacity: 0 });
+      gsap.set(details, { opacity: 0, y: 14 });
+      gsap.set(title, { yPercent: 110 });
+      argsReveal.to(item, { opacity: 1, duration: 0.4 }, at);
       if (struck && strike) {
         // Barré → remplacé : le mot arrive, le trait le raye, l'argument prend sa place.
-        argsTl.fromTo(struck, { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.14 }, i + 0.02);
-        argsTl.fromTo(strike, { scaleX: 0 }, { scaleX: 1, duration: 0.16, ease: 'power2.inOut' }, i + 0.17);
-        argsTl.to(struck, { opacity: 0.6, duration: 0.1 }, i + 0.3);
+        gsap.set(struck, { opacity: 0, y: 14 });
+        gsap.set(strike, { scaleX: 0 });
+        argsReveal.to(struck, { opacity: 1, y: 0, duration: 0.5 }, at);
+        argsReveal.to(strike, { scaleX: 1, duration: 0.45, ease: 'power2.inOut' }, at + 0.3);
+        argsReveal.to(struck, { opacity: 0.6, duration: 0.3 }, at + 0.7);
       }
-      argsTl.fromTo(
-        title,
-        { yPercent: 110 },
-        { yPercent: 0, duration: 0.32, ease: 'power3.out' },
-        i + (struck ? 0.27 : 0.06),
-      );
-      gsap.set(details, { opacity: 0, y: 14 });
-      argsTl.to(details, { opacity: 1, y: 0, duration: 0.2, stagger: 0.05 }, i + (struck ? 0.42 : 0.24));
-      argsTl.to(
-        item,
-        { opacity: 0, y: () => -vh() * 0.07, duration: 0.2, ease: 'power1.in' },
-        last ? i + 1.02 : i + 0.8,
-      );
-
-      // La bouteille présente la face de l'étiquette qui correspond à l'argument.
-      if (!compact) {
-        const turns = Math.PI * 4 + Math.floor(i / faces.length) * Math.PI * 2;
-        argsTl.to(
-          pose,
-          { spin: turns + faces[i % faces.length], duration: 0.6, ease: 'power2.inOut' },
-          i === 0 ? 0 : i - 0.12,
-        );
-      }
+      argsReveal.to(title, { yPercent: 0, duration: 0.9, ease: 'power3.out' }, at + (struck ? 0.55 : 0.1));
+      argsReveal.to(details, { opacity: 1, y: 0, duration: 0.7, stagger: 0.08 }, at + (struck ? 0.75 : 0.3));
     });
-    // Sortie vers le devis : la bouteille quitte l'écran par le bas.
-    argsTl.to(argsLabel, { opacity: 0, duration: 0.15 }, items.length + 0.02);
-    if (!compact) argsTl.to(pose, { y: -1.4, tiltZ: 0.22, duration: 0.5, ease: 'power2.in' }, items.length);
-    argsTl.set({}, {}, items.length + 1);
+    ScrollTrigger.create({
+      trigger: args,
+      start: 'top 20%',
+      end: 'max',
+      onEnter: () => argsReveal.timeScale(1).play(),
+      onEnterBack: () => argsReveal.timeScale(1).play(),
+      onLeaveBack: () => argsReveal.timeScale(2.5).reverse(),
+    });
+
+    // Piloté par le scroll : seulement la bouteille (un tour, retour de face) et la sortie.
+    const argsTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: scrollTrigger(args) });
+    if (!compact) argsTl.to(pose, { spin: Math.PI * 4, duration: 0.95, ease: 'power1.inOut' }, 0);
+    // Sortie vers le devis : le texte s'efface, la bouteille quitte l'écran par le bas.
+    argsTl.to(argsLayers, { opacity: 0, y: () => -vh() * 0.06, duration: 0.3, ease: 'power1.in' }, 1);
+    if (!compact) argsTl.to(pose, { y: -1.4, tiltZ: 0.22, duration: 0.5, ease: 'power2.in' }, 1);
+    argsTl.set({}, {}, 2);
 
     /* -------------------------------- Scène 4 : devis ------------------------------ */
     // Le panneau noir s'ouvre comme une fente depuis le milieu de l'écran, puis le formulaire

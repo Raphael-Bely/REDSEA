@@ -51,7 +51,13 @@ export default defineConfig({
   env: {
     schema: {
       RESEND_API_KEY: envField.string({ context: 'server', access: 'secret', optional: true }),
-      QUOTE_RECIPIENT_EMAIL: envField.string({ context: 'server', access: 'secret', optional: true }),
+      // Boîte qui reçoit les demandes de devis. Remplaçable par la variable d'environnement.
+      QUOTE_RECIPIENT_EMAIL: envField.string({
+        context: 'server',
+        access: 'secret',
+        optional: true,
+        default: 'redseabissap@gmail.com',
+      }),
       QUOTE_SENDER_EMAIL: envField.string({
         context: 'server',
         access: 'secret',

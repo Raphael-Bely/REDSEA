@@ -50,7 +50,7 @@
  */
 @supports (background-clip: text) or (-webkit-background-clip: text) {
   :root[data-palette='noir'] :is(.hero__letter, .args__title-inner, .legal__title, .curtain--cream .curtain__word) {
-    background: url('/textures/noir/lowpoly.svg') 0 0 / 3.6em 3.6em repeat var(--red);
+    background: url('/textures/noir/lowpoly.svg') 0 0 / 2.2em 2.2em repeat var(--red);
     background-position:
       calc(var(--facet-i, 0) * 1.37em + var(--facet-part, 0em))
       calc(var(--facet-i, 0) * 0.83em + var(--facet-part, 0em));

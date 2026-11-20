@@ -71,14 +71,11 @@ Tout le contenu est centralisé dans **`src/content/site.ts`**. Chercher `À REM
 
 | Où | Quoi |
 | --- | --- |
-| `brand.contactEmail` | email de contact public (footer, pages légales) |
-| `about.text`, `about.signature` | paragraphe « Qui sommes-nous » (~80 mots). Le texte actuel est un placeholder écrit à partir de l'étiquette |
-| `argumentsSection.items[].note` | une phrase par argument. Les titres et le mot barré sont modifiables aussi |
-| `quote.intro`, `quote.successText` | délai de réponse, zone de livraison, minimum de commande |
-| `rgpd.controller`, `rgpd.rightsEmail` | responsable de traitement et email d'exercice des droits |
-| `legal.*` | éditeur (raison sociale, statut, SIREN, adresse, email, téléphone), directeur de publication, hébergeur |
-| `src/pages/confidentialite.astro` | quelques `[À REMPLIR]` / `[À VÉRIFIER]` : DPO éventuel, localisation des sous-traitants, base des transferts hors UE ; supprimer la ligne Slack si le webhook n'est pas utilisé |
+| `legal.*` | éditeur (raison sociale, statut, SIREN, adresse, téléphone), directeur de publication, hébergeur, date de mise à jour |
+| `src/pages/confidentialite.astro` | localisation de l'hébergeur et base des transferts hors UE (`[À REMPLIR]` / `[À VÉRIFIER]`) |
 | `src/pages/mentions-legales.astro` | titulaire des droits / dépôt INPI |
+
+Déjà rempli : textes « Qui sommes-nous » et « Ce qu'il y a dans la bouteille », email de contact et d'exercice des droits RGPD (`redseabissap@gmail.com`), destinataire des devis.
 
 Faire relire les deux pages légales par un juriste avant mise en ligne : la structure est complète (articles 13–14 RGPD), mais le contenu dépend de votre situation.
 
@@ -119,6 +116,7 @@ L'email part avec `Reply-To` = l'adresse du prospect : répondre écrit directem
 1. api.slack.com/apps → **Create New App → From scratch**.
 2. **Incoming Webhooks** → activer → **Add New Webhook to Workspace** → choisir le canal.
 3. Copier l'URL `https://hooks.slack.com/services/…` dans `SLACK_WEBHOOK_URL`.
+4. Slack devient alors un sous-traitant : **remettre sa ligne** dans le tableau des prestataires de `src/pages/confidentialite.astro` (retirée tant que Slack n'est pas utilisé).
 
 Le message est formaté en Block Kit. Un échec Slack est journalisé mais **ne fait jamais échouer** l'envoi de l'email. Cette URL est un secret : ne jamais la committer.
 

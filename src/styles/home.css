@@ -78,9 +78,10 @@ html.has-scenes .about {
   height: 240svh;
 }
 
+/* Arguments : un écran de lecture, puis un écran de sortie vers le devis. */
 html.has-scenes .args {
-  height: calc((var(--arg-count, 4) + 1) * 100vh);
-  height: calc((var(--arg-count, 4) + 1) * 100svh);
+  height: 200vh;
+  height: 200svh;
 }
 
 .stage__canvas {
@@ -479,7 +480,11 @@ html.has-scenes .about__signature {
   }
 }
 
-/* Scène : un seul argument à l'écran à la fois, en très grand, à gauche de la bouteille. */
+/*
+ * Scène : les quatre arguments sur un seul écran, en grille, à gauche de la bouteille.
+ * Ils apparaissent d'un coup quand on arrive sur la section (animation jouée, pas pilotée
+ * par le scroll) : voir « Scène 3 » dans main.ts.
+ */
 html.has-scenes .args {
   display: block;
   padding: 0;
@@ -494,44 +499,72 @@ html.has-scenes .args__label {
 
 html.has-scenes .args__list {
   position: absolute;
-  inset: 0;
+  inset: 0 36vw 0 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-content: center;
+  gap: clamp(1.6rem, 5svh, 3.6rem) clamp(1.6rem, 3vw, 3.4rem);
+  padding: clamp(8rem, 21svh, 12rem) 0 clamp(2.5rem, 8svh, 5rem) var(--gutter);
 }
 
 html.has-scenes .args__item {
-  position: absolute;
-  inset: 0;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  gap: clamp(0.8rem, 2svh, 1.6rem);
-  padding: clamp(7rem, 20svh, 12rem) var(--gutter) clamp(3rem, 10svh, 7rem);
+  gap: clamp(0.5rem, 1.4svh, 1rem);
+  padding: clamp(1rem, 2.6svh, 1.6rem) 0 0;
   border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--ink) 24%, transparent);
 }
 
-/* Rythme asymétrique : un argument sur deux s'ancre en bas de l'écran. */
-html.has-scenes .args__item:nth-child(even) {
-  justify-content: flex-end;
+html.has-scenes .args__item:last-child {
+  border-bottom: 0;
 }
 
 html.has-scenes .args__index {
   padding-top: 0;
 }
 
-html.has-scenes .args__body {
-  max-width: 61vw;
+html.has-scenes .args__struck {
+  font-size: calc(min(1.9vw, 3.4svh) * var(--display-scale));
+  margin-bottom: 0.1em;
 }
 
 html.has-scenes .args__title {
-  font-size: calc(clamp(2.6rem, 7.6vw, 10rem) * var(--display-scale));
+  font-size: calc(min(3.6vw, 6.2svh) * var(--display-scale));
 }
 
+html.has-scenes .args__note {
+  max-width: 34ch;
+  margin-top: clamp(0.3rem, 1svh, 0.7rem);
+  font-size: min(var(--fs-body), 2.2svh);
+}
+
+/* Mobile : pas de bouteille dans cette scène, les quatre arguments s'empilent sur toute la largeur. */
 @media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
-  html.has-scenes .args__body {
-    max-width: none;
+  html.has-scenes .args__list {
+    inset: 0;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(0.9rem, 2.6svh, 1.6rem);
+    padding: clamp(6.2rem, 16svh, 8rem) var(--gutter) clamp(1.5rem, 4svh, 3rem);
+  }
+
+  html.has-scenes .args__item {
+    gap: clamp(0.25rem, 0.9svh, 0.6rem);
+    padding-top: clamp(0.6rem, 1.6svh, 1rem);
+  }
+
+  html.has-scenes .args__struck {
+    font-size: calc(min(4.6vw, 2.6svh) * var(--display-scale));
   }
 
   html.has-scenes .args__title {
-    font-size: calc(12.4vw * var(--display-scale));
+    font-size: calc(min(8.6vw, 4.6svh) * var(--display-scale));
+  }
+
+  html.has-scenes .args__note {
+    max-width: none;
+    margin-top: 0;
+    font-size: min(0.92rem, 2svh);
   }
 }
 
