@@ -148,7 +148,9 @@ Le script Turnstile n'est chargé que lorsque le visiteur approche du formulaire
 
 L'hébergeur est détecté au build (`astro.config.mjs`) : l'adaptateur Netlify ou Vercel est choisi automatiquement. Seule la route `/api/devis` devient une fonction serveur ; tout le reste est statique.
 
-**Netlify** (offre gratuite, usage commercial autorisé) :
+**Netlify** (offre gratuite, sans limite de durée) :
+
+> **Crédits de l'offre gratuite** (relevés sur netlify.com/pricing, novembre 2026) : 300 crédits par mois, plafond strict, remis à zéro chaque mois. Chaque **déploiement en production coûte 15 crédits** : chaque `git push` sur `main` en déclenche un. La bande passante coûte 20 crédits par Go ; une première visite du site pèse environ 1,5 Mo (les suivantes viennent du cache). Les déploiements de prévisualisation et de branche sont gratuits. Crédits épuisés = plus de déploiement possible, et le site risque d'être mis en pause jusqu'au mois suivant. Grouper les modifications avant de pousser, et suivre la consommation dans **Usage & billing**.
 
 1. Pousser le dépôt sur GitHub, puis **Netlify → Add new project → Import an existing project** et choisir le dépôt. Les réglages viennent de `netlify.toml` (commande `npm run build`, dossier `dist`, Node 22) : ne rien changer dans l'interface.
 2. **Project configuration → Environment variables** : ajouter les variables de la section 3 (`RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`, `PUBLIC_TURNSTILE_SITE_KEY`, et `SITE_URL` une fois le nom de domaine branché). `REDSEA_PALETTE` vaut `classique` par défaut dans `netlify.toml`.
