@@ -54,17 +54,23 @@ export const quoteSchema = z.object({
 
 export type QuoteData = z.infer<typeof quoteSchema>;
 
+/**
+ * Coupe une valeur juste au-delà de sa longueur maximale : la validation signale toujours
+ * « trop long », mais aucune expression régulière ne tourne jamais sur une chaîne énorme.
+ */
+const cap = (value: string, max: number) => value.slice(0, max + 1);
+
 /** Nettoie les champs bruts avant validation. Tout ce qui n'est pas attendu est ignoré. */
 export function sanitizeQuoteInput(raw: Record<string, unknown>) {
   return {
-    name: cleanLine(raw.name),
-    establishment: cleanLine(raw.establishment),
-    type: cleanLine(raw.type),
-    city: cleanLine(raw.city),
-    email: cleanLine(raw.email).toLowerCase(),
-    phone: cleanLine(raw.phone),
-    volume: cleanLine(raw.volume),
-    startDate: cleanLine(raw.startDate),
-    message: cleanText(raw.message),
+    name: cap(cleanLine(raw.name), LIMITS.name),
+    establishment: cap(cleanLine(raw.establishment), LIMITS.establishment),
+    type: cap(cleanLine(raw.type), 40),
+    city: cap(cleanLine(raw.city), LIMITS.city),
+    email: cap(cleanLine(raw.email).toLowerCase(), LIMITS.email),
+    phone: cap(cleanLine(raw.phone), LIMITS.phone),
+    volume: cap(cleanLine(raw.volume), 40),
+    startDate: cap(cleanLine(raw.startDate), 10),
+    message: cap(cleanText(raw.message), LIMITS.message),
   };
 }

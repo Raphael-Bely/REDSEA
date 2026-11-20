@@ -14,13 +14,41 @@ import {
 } from 'astro:env/server';
 import { HONEYPOT_FIELD, type QuoteFieldName } from '../../lib/quote-fields';
 import { quoteSchema, sanitizeQuoteInput } from '../../lib/quote-schema';
-import { rateLimit } from '../../lib/rate-limit';
+import { rateLimit, rateLimitKey } from '../../lib/rate-limit';
 import { postQuoteToSlack, sendQuoteEmail, verifyTurnstile } from '../../lib/quote-notify';
 
 export const prerender = false;
 
 const MAX_BODY_BYTES = 16 * 1024;
 const UNAVAILABLE = 'Le formulaire est momentanément indisponible. Écrivez-nous directement par email.';
+
+/**
+ * Lit le corps en s'arrêtant dès qu'il dépasse `limit` octets : une requête énorme n'est jamais
+ * chargée en entier en mémoire. Renvoie null si la limite est dépassée.
+ */
+async function readBodyCapped(request: Request, limit: number): Promise<string | null> {
+  if (!request.body) return '';
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > limit) {
+      await reader.cancel().catch(() => undefined);
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
 
 const json = (status: number, body: Record<string, unknown>, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
@@ -56,7 +84,7 @@ export const POST: APIRoute = async ({ request, clientAddress, url }) => {
   } catch {
     /* adresse indisponible (certains environnements de test) */
   }
-  const limit = rateLimit(ip, 5, 10 * 60 * 1000);
+  const limit = rateLimit(rateLimitKey(ip), 5, 10 * 60 * 1000);
   if (!limit.allowed) {
     return json(
       429,
@@ -65,9 +93,10 @@ export const POST: APIRoute = async ({ request, clientAddress, url }) => {
     );
   }
 
-  // 3. Corps : taille bornée, JSON objet.
-  const rawText = await request.text();
-  if (new TextEncoder().encode(rawText).length > MAX_BODY_BYTES) {
+  // 3. Corps : taille bornée (annoncée puis réellement lue), JSON objet.
+  const declared = Number(request.headers.get('content-length') ?? '0');
+  const rawText = declared > MAX_BODY_BYTES ? null : await readBodyCapped(request, MAX_BODY_BYTES);
+  if (rawText === null) {
     return json(413, { ok: false, message: 'Demande trop volumineuse.' });
   }
   let raw: Record<string, unknown>;

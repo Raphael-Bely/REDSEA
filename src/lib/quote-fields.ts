@@ -9,11 +9,12 @@ export const ESTABLISHMENT_TYPES = [
   { value: 'autre', label: 'Autre' },
 ] as const;
 
+/** `label` : texte complet (email, lecteurs d'écran) ; `short` : texte de la pastille. */
 export const VOLUMES = [
-  { value: 'lt50', label: 'Moins de 50 bouteilles' },
-  { value: '50-200', label: '50 à 200 bouteilles' },
-  { value: '200-500', label: '200 à 500 bouteilles' },
-  { value: '500plus', label: 'Plus de 500 bouteilles' },
+  { value: 'lt50', label: 'Moins de 50 bouteilles', short: 'Moins de 50' },
+  { value: '50-200', label: '50 à 200 bouteilles', short: '50 – 200' },
+  { value: '200-500', label: '200 à 500 bouteilles', short: '200 – 500' },
+  { value: '500plus', label: 'Plus de 500 bouteilles', short: '500 et plus' },
 ] as const;
 
 export const LIMITS = {

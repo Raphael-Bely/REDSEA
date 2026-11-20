@@ -162,7 +162,7 @@ Le build ne produit ni source map, ni script ou style inline (c'est ce qui perme
 
 **Cloudflare Pages à la place de Vercel** : remplacer l'adaptateur (`npm i @astrojs/cloudflare`, puis `adapter: cloudflare()` dans `astro.config.mjs`) et recopier les en-têtes de `vercel.json` dans un fichier `public/_headers`. Le code de la route `/api/devis` n'utilise que `fetch` et des API web standard : il n'a pas à changer.
 
-**Limite de débit** : 5 requêtes / 10 min par IP, en mémoire (`src/lib/rate-limit.ts`). En serverless chaque instance a sa propre mémoire : c'est un frein efficace contre les rafales, pas un quota strict. Pour un quota exact, ajouter une règle de rate limiting dans le pare-feu de l'hébergeur (Vercel Firewall / Cloudflare WAF) sur `/api/devis`, ou brancher un magasin partagé (Upstash Redis) dans ce fichier.
+**Limite de débit** : 5 requêtes / 10 min par adresse IP (adresses IPv6 regroupées par bloc /64), en mémoire (`src/lib/rate-limit.ts`). En serverless chaque instance a sa propre mémoire : c'est un frein efficace contre les rafales, pas un quota strict. La vraie barrière contre les robots est Turnstile ; pour un quota exact, ajouter une règle de rate limiting dans le pare-feu de l'hébergeur sur `/api/devis`.
 
 ---
 
@@ -289,7 +289,30 @@ Points laissés ouverts par le brief, tranchés ainsi (tous faciles à changer) 
 
 ---
 
-## 9. Accessibilité, performance, vie privée
+## 9. Sécurité
+
+Audit du site (code, configuration, dépendances), avec les protections en place :
+
+| Risque | Protection |
+| --- | --- |
+| Injection de code dans les pages (XSS) | aucun HTML construit à partir de données ; messages affichés en texte (`textContent`) ; CSP stricte sans `'unsafe-inline'` ni `eval` |
+| Scripts ou contenus tiers | CSP : uniquement le site lui-même et Turnstile ; aucune police, aucun CDN, aucun traceur |
+| Site affiché dans un cadre (clickjacking) | `frame-ancestors 'none'` et `X-Frame-Options: DENY` |
+| Formulaire envoyé depuis un autre site (CSRF) | contrôle de l'en-tête `Origin`, JSON obligatoire, `form-action 'self'` |
+| Robots et spam | Turnstile (vérifié côté serveur), champ piège, limite de débit |
+| Requêtes énormes ou piégées | corps refusé au-delà de 16 Ko (taille annoncée et taille réellement lue), champs coupés à leur longueur maximale avant toute expression régulière |
+| Données envoyées par le formulaire | nettoyées (caractères invisibles et de contrôle), validées par zod, échappées dans l'email (HTML) et dans Slack ; destinataire fixé côté serveur : le formulaire ne peut pas servir à envoyer des emails ailleurs |
+| Fuite de secrets | clés uniquement dans les variables d'environnement, jamais dans le code ; `.env` ignoré par git (jamais commité, historique vérifié) ; pas de source map publiée |
+| Connexion interceptée | HTTPS forcé (HSTS 2 ans, `upgrade-insecure-requests`) |
+| Accès aux capteurs du navigateur | `Permissions-Policy` : caméra, micro, géolocalisation, paiement… désactivés |
+
+Les en-têtes sont dans `vercel.json` et `netlify.toml` (à garder identiques) ; le site a été testé servi avec ces en-têtes, sans aucune violation de la CSP.
+
+**Dépendances** : `npm audit` ne signale aucune faille haute ou critique. Il reste 10 alertes « modérées » dans `glob` et `minimatch`, utilisés uniquement par les outils de Netlify qui empaquettent la fonction au moment du build, sur nos propres fichiers : non exploitables ici (elles demandent qu'un attaquant contrôle des motifs de fichiers), et rien de ce code n'est envoyé aux visiteurs. Les forcer à jour casserait l'empaquetage ; elles disparaîtront avec une prochaine version de l'adaptateur Netlify (`npm update`).
+
+**À faire de votre côté** : garder le dépôt GitHub privé (il contient les étiquettes et des adresses personnelles), activer la double authentification sur GitHub, Netlify, Resend et Cloudflare, et ne jamais coller une clé dans le code ou dans une capture d'écran.
+
+## 10. Accessibilité, performance, vie privée
 
 - HTML sémantique, un seul `h1`, lien d'évitement, focus visibles, labels réels, erreurs reliées aux champs (`aria-describedby`, `aria-invalid`), statut d'envoi annoncé (`role="alert"`).
 - `prefers-reduced-motion` : pas de smooth scroll, pas de rotation, pas de reveal ; le contenu est affiché directement et la bouteille est une image fixe.

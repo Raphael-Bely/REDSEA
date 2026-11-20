@@ -252,7 +252,9 @@ textarea {
   gap: 1rem;
   padding: clamp(0.9rem, 2vw, 1.5rem) var(--gutter);
   color: var(--red);
-  transition: color 0.5s var(--ease-soft);
+  transition:
+    color 0.5s var(--ease-soft),
+    background-color 0.5s var(--ease-soft);
   pointer-events: none;
 }
 
@@ -331,6 +333,11 @@ textarea {
   transition:
     opacity 0.4s var(--ease-soft),
     visibility 0.4s;
+}
+
+/* Sur le devis, le formulaire défile sous l'en-tête : un fond l'empêche de chevaucher les champs. */
+.site-header[data-at-quote='true'] {
+  background: color-mix(in srgb, var(--ink) 94%, transparent);
 }
 
 /* Sur la section devis, le lien « Demander un devis » est redondant : on l'efface. */

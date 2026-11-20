@@ -31,21 +31,6 @@ import { ESTABLISHMENT_TYPES, VOLUMES, LIMITS, HONEYPOT_FIELD } from '../lib/quo
         <p class="field__error" id="q-establishment-err" data-error></p>
       </div>
 
-      <div class="field" data-field="type">
-        <label for="q-type">Type d’établissement</label>
-        <select id="q-type" name="type" aria-describedby="q-type-err">
-          <option value="">Choisir…</option>
-          {ESTABLISHMENT_TYPES.map((o) => <option value={o.value}>{o.label}</option>)}
-        </select>
-        <p class="field__error" id="q-type-err" data-error></p>
-      </div>
-
-      <div class="field" data-field="city">
-        <label for="q-city">Ville</label>
-        <input id="q-city" name="city" type="text" autocomplete="address-level2" maxlength={LIMITS.city} aria-describedby="q-city-err" />
-        <p class="field__error" id="q-city-err" data-error></p>
-      </div>
-
       <div class="field" data-field="email">
         <label for="q-email">Email <span aria-hidden="true">*</span></label>
         <input id="q-email" name="email" type="email" autocomplete="email" inputmode="email" required maxlength={LIMITS.email} aria-describedby="q-email-err" />
@@ -58,13 +43,10 @@ import { ESTABLISHMENT_TYPES, VOLUMES, LIMITS, HONEYPOT_FIELD } from '../lib/quo
         <p class="field__error" id="q-phone-err" data-error></p>
       </div>
 
-      <div class="field" data-field="volume">
-        <label for="q-volume">Volume estimé par mois</label>
-        <select id="q-volume" name="volume" aria-describedby="q-volume-err">
-          <option value="">Choisir…</option>
-          {VOLUMES.map((o) => <option value={o.value}>{o.label}</option>)}
-        </select>
-        <p class="field__error" id="q-volume-err" data-error></p>
+      <div class="field" data-field="city">
+        <label for="q-city">Ville</label>
+        <input id="q-city" name="city" type="text" autocomplete="address-level2" maxlength={LIMITS.city} aria-describedby="q-city-err" />
+        <p class="field__error" id="q-city-err" data-error></p>
       </div>
 
       <div class="field" data-field="startDate">
@@ -72,6 +54,36 @@ import { ESTABLISHMENT_TYPES, VOLUMES, LIMITS, HONEYPOT_FIELD } from '../lib/quo
         <input id="q-start" name="startDate" type="date" aria-describedby="q-start-err" />
         <p class="field__error" id="q-start-err" data-error></p>
       </div>
+
+      <fieldset class="field field--choices" data-field="type">
+        <legend id="q-type-legend">Type d’établissement <span class="field__opt">(optionnel)</span></legend>
+        <div class="choices" role="radiogroup" aria-labelledby="q-type-legend" aria-describedby="q-type-err" data-choices>
+          {
+            ESTABLISHMENT_TYPES.map((o) => (
+              <label class="choice">
+                <input type="radio" name="type" value={o.value} />
+                <span>{o.label}</span>
+              </label>
+            ))
+          }
+        </div>
+        <p class="field__error" id="q-type-err" data-error></p>
+      </fieldset>
+
+      <fieldset class="field field--choices" data-field="volume">
+        <legend id="q-volume-legend">Bouteilles par mois <span class="field__opt">(estimation)</span></legend>
+        <div class="choices" role="radiogroup" aria-labelledby="q-volume-legend" aria-describedby="q-volume-err" data-choices>
+          {
+            VOLUMES.map((o) => (
+              <label class="choice">
+                <input type="radio" name="volume" value={o.value} aria-label={o.label} />
+                <span aria-hidden="true">{o.short}</span>
+              </label>
+            ))
+          }
+        </div>
+        <p class="field__error" id="q-volume-err" data-error></p>
+      </fieldset>
 
       <div class="field field--wide" data-field="message">
         <label for="q-message">Message <span class="field__opt">(optionnel)</span></label>

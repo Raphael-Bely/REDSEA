@@ -70,13 +70,24 @@ export function initQuoteForm({ reducedMotion = false } = {}) {
   const counter = form.querySelector<HTMLElement>('[data-message-count]');
   const names = Object.keys(VALIDATORS) as QuoteFieldName[];
 
-  const control = (name: string) =>
-    form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement | null;
-  const valueOf = (name: string) => (control(name)?.value ?? '').trim();
+  type Control = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+  /** Éléments d'un champ : un seul en général, plusieurs pour un groupe de pastilles (radios). */
+  const controlsOf = (name: string): Control[] => {
+    const item = form.elements.namedItem(name);
+    if (!item) return [];
+    return item instanceof RadioNodeList ? (Array.from(item) as HTMLInputElement[]) : [item as Control];
+  };
+  const control = (name: string): Control | null => controlsOf(name)[0] ?? null;
+  const valueOf = (name: string) => {
+    const item = form.elements.namedItem(name);
+    if (item instanceof RadioNodeList) return item.value.trim();
+    return ((item as Control | null)?.value ?? '').trim();
+  };
 
   const setError = (name: QuoteFieldName, message: string | null) => {
-    const input = control(name);
     const field = form.querySelector<HTMLElement>(`[data-field="${name}"]`);
+    // Groupe de pastilles : l'état invalide se porte sur le groupe, pas sur chaque pastille.
+    const input = field?.querySelector<HTMLElement>('[data-choices]') ?? control(name);
     const error = field?.querySelector<HTMLElement>('[data-error]');
     if (!input || !field || !error) return;
     field.classList.toggle('is-invalid', Boolean(message));
@@ -99,10 +110,30 @@ export function initQuoteForm({ reducedMotion = false } = {}) {
   if (startInput) startInput.min = new Date().toISOString().slice(0, 10);
 
   for (const name of names) {
-    const input = control(name);
-    input?.addEventListener('blur', () => validate(name));
-    input?.addEventListener('input', () => {
-      if (input.getAttribute('aria-invalid') === 'true') validate(name);
+    for (const input of controlsOf(name)) {
+      if (input instanceof HTMLInputElement && input.type === 'radio') {
+        input.addEventListener('change', () => validate(name));
+        continue;
+      }
+      input.addEventListener('blur', () => validate(name));
+      input.addEventListener('input', () => {
+        if (input.getAttribute('aria-invalid') === 'true') validate(name);
+      });
+    }
+  }
+
+  // Pastilles facultatives : recliquer sur la pastille choisie la désélectionne.
+  for (const radio of form.querySelectorAll<HTMLInputElement>('[data-choices] input[type="radio"]')) {
+    let wasChecked = false;
+    radio.addEventListener('pointerdown', () => {
+      wasChecked = radio.checked;
+    });
+    radio.addEventListener('click', () => {
+      if (wasChecked) {
+        radio.checked = false;
+        radio.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      wasChecked = false;
     });
   }
   const message = control('message');
