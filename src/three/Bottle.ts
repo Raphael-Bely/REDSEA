@@ -1,9 +1,14 @@
 /**
  * Bottle.ts — bouteille REDSEA 3D, générée procéduralement.
  * -----------------------------------------------------------------------------
- * Ce module est le SEUL à connaître Three.js. Il est chargé à la demande
- * (import dynamique) et expose un contrôleur minimal : pose pilotée par le
+ * Point d'entrée du dossier src/three/, le seul endroit du site qui connaît Three.js. Il est
+ * chargé à la demande (import dynamique) et expose un contrôleur minimal : pose pilotée par le
  * scroll, rotation au drag avec inertie, rotation idle, demi-tour au clic.
+ *
+ *   Bottle.ts        verre, liquide, étiquette, assemblage, contrôleur
+ *   cap.ts           capsule à vis (filetage, moletage, dessus imprimé)
+ *   condensation.ts  gouttes de condensation
+ *   studio.ts        éclairage studio reflété par le verre et le métal
  *
  * Remplacer la bouteille procédurale par un fichier .glb :
  *   → ne toucher qu'à `loadBottleModel()` (voir le README, section « .glb »).
@@ -13,16 +18,14 @@
 import {
   AmbientLight,
   CanvasTexture,
-  CircleGeometry,
   Color,
   CylinderGeometry,
   DoubleSide,
   DirectionalLight,
   Group,
-  InstancedMesh,
   LatheGeometry,
   LinearFilter,
-  Matrix4,
+  type Material,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
@@ -35,16 +38,17 @@ import {
   PMREMGenerator,
   Scene,
   ShaderMaterial,
-  SphereGeometry,
   SRGBColorSpace,
-  type Texture,
+  Texture,
   TextureLoader,
-  TorusGeometry,
   Vector2,
   Vector3,
   WebGLRenderer,
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { CAP, createCap } from './cap';
+import { createCondensation } from './condensation';
+import { createStudioEnvironment, KEY_LIGHT_DIRECTION } from './studio';
 
 /* -------------------------------------------------------------------------- */
 /* Dimensions (cm) — bouteille 33 cl type limonade, relevées sur la photo      */
@@ -52,10 +56,8 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 export const BOTTLE = {
   height: 21.7,
   bodyRadius: 3.0,
-  neckRadius: 1.36,
-  /** Niveau du liquide, sous le col. */
-  fillLevel: 17.05,
-  capRadius: 1.6,
+  /** Niveau du liquide, dans le col (comme sur la photo). */
+  fillLevel: 17.6,
   /** Position horizontale (0–1) du centre du logo sur l'étiquette déroulée : c'est la face avant. */
   labelFrontU: 0.272,
   /** Ratio largeur / hauteur de l'image d'étiquette (1368 × 624). Recalculé à partir de la texture. */
@@ -66,6 +68,16 @@ export const BOTTLE = {
 
 /** Marge (cm) au-dessus du niveau de remplissage, dans laquelle la surface peut monter en ballottant. */
 const LIQUID_HEADROOM = 1.8;
+
+/** Épaisseur de la paroi de verre (cm) : fixe la largeur des bords « miroir » du col vide. */
+const GLASS_WALL = 0.3;
+
+/**
+ * Jeu (cm) entre le liquide et la face extérieure du verre. Vu de dehors, un liquide en
+ * bouteille semble remplir le verre jusqu'à son bord : la paroi, par réfraction, grossit ce
+ * qu'elle contient. Le volume de liquide suit donc la face extérieure, pas la face intérieure.
+ */
+const LIQUID_GAP = 0.04;
 
 /**
  * Absorption du bissap par centimètre traversé (rouge, vert, bleu ; loi de Beer-Lambert).
@@ -79,8 +91,6 @@ const COLORS = {
   liquidGlow: 0x9c0d1a,
   /** Fond de page du hero : c'est lui que le verre réfracte (voir la boucle de rendu). */
   backdrop: 0xf3e2c4,
-  gold: 0xc9a35c,
-  glassTint: 0xfbf4ee,
   ink: '26, 13, 11',
 } as const;
 
@@ -100,6 +110,8 @@ export interface BottleOptions {
   canvas: HTMLCanvasElement;
   labelUrl: string;
   capUrl: string;
+  /** Couleur de l'encre du logo de la capsule (sRGB). Par défaut : rouge (palette classique). */
+  capInk?: number;
   /** Scène allégée (mobile) : pixel ratio plafonné, pas de condensation. */
   lowPower?: boolean;
   /** Progression réelle du chargement (0 → 1) : textures, compilation des shaders, première image. */
@@ -142,8 +154,12 @@ export interface BottleController {
 interface BottleAssets {
   label: Texture;
   cap: Texture;
-  /** Gouttes de condensation (désactivées en mode allégé). */
-  condensation: boolean;
+  /** Studio reflété par le verre et le métal (voir studio.ts). */
+  environment: Texture;
+  /** Scène allégée (mobile) : maillages plus légers, pas de condensation. */
+  lowPower: boolean;
+  /** Encre du logo de la capsule (sRGB), selon la palette. */
+  capInk?: number;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -159,64 +175,100 @@ export async function loadBottleModel(assets: BottleAssets): Promise<Object3D> {
   return buildProceduralBottle(assets);
 }
 
-/** Profil extérieur du verre : (rayon, hauteur), de la base au buvant. */
-function glassProfile(inset = 0, topY: number = BOTTLE.height - 0.25): Vector2[] {
-  const R = BOTTLE.bodyRadius - inset;
-  const N = BOTTLE.neckRadius - inset;
-  const path = new Path();
-  path.moveTo(0.001, inset);
-  path.lineTo(R - 0.75, inset);
-  path.quadraticCurveTo(R - 0.08, inset + 0.05, R, inset + 0.85); // talon arrondi
-  path.lineTo(R, 12.5); // corps cylindrique
-  path.bezierCurveTo(R, 14.75, N + 0.2, 14.7, N + 0.07, 16.7); // épaule douce
-  path.lineTo(N, 19.55); // col long
-  if (inset === 0) {
-    path.quadraticCurveTo(N + 0.02, 19.7, N + 0.16, 19.75); // bague
-    path.lineTo(N + 0.16, 19.98);
-    path.lineTo(N + 0.02, 20.05);
-    path.lineTo(N + 0.02, topY);
-  }
-  const points = path.getPoints(22);
-  return points.filter((p) => p.y <= topY + 1e-3);
+/**
+ * Paroi commune au verre et au liquide : corps cylindrique, épaule, col conique (relevés sur
+ * la photo). `gap` rentre le tracé vers l'axe : c'est le volume du liquide.
+ */
+function traceWall(path: Path, gap: number): void {
+  const R = BOTTLE.bodyRadius - gap;
+  path.lineTo(R, 13.0); // corps cylindrique
+  path.bezierCurveTo(R, 15.1, 2.0 - gap, 15.2, 1.8 - gap, 16.6); // épaule
+  path.bezierCurveTo(1.72 - gap, 17.5, 1.5 - gap, 18.6, 1.44 - gap, 19.6); // col conique
 }
 
-function buildProceduralBottle({ label, cap, condensation }: BottleAssets): Group {
+/** Profil extérieur du verre : (rayon, hauteur), du centre du fond au buvant. */
+function glassProfile(): Vector2[] {
+  const R = BOTTLE.bodyRadius;
+  const path = new Path();
+  path.moveTo(0.001, 0.32); // piqûre : le fond rentre vers l'intérieur
+  path.quadraticCurveTo(1.8, 0.32, 2.3, 0); // jusqu'à la couronne d'appui
+  path.lineTo(2.45, 0);
+  path.quadraticCurveTo(R, 0, R, 0.6); // talon arrondi
+  traceWall(path, 0);
+  path.quadraticCurveTo(1.44, 19.74, 1.6, 19.78); // bague de verre, juste sous la capsule
+  path.lineTo(1.62, 19.94);
+  path.quadraticCurveTo(1.6, 20.07, 1.42, 20.09);
+  path.lineTo(1.4, 21.3); // goulot fileté (caché par la capsule)
+  path.quadraticCurveTo(1.4, 21.42, 1.27, 21.42); // buvant
+  path.lineTo(1.1, 21.42);
+  return path.getPoints(24);
+}
+
+/**
+ * Profil du volume de liquide, fermé à la hauteur `top`. Le fond de verre est épais (≈ 6 mm) :
+ * le liquide s'arrête au-dessus, avec un talon arrondi, et laisse voir le verre plein en dessous.
+ */
+function liquidProfile(top: number): Vector2[] {
+  const R = BOTTLE.bodyRadius - LIQUID_GAP;
+  const path = new Path();
+  path.moveTo(0.001, 0.76); // fond du liquide, bombé par la piqûre
+  path.quadraticCurveTo(1.8, 0.76, 2.3, 0.62);
+  path.quadraticCurveTo(R, 0.62, R, 1.5); // talon intérieur
+  traceWall(path, LIQUID_GAP);
+  const points = path.getPoints(24);
+  const closed: Vector2[] = [];
+  for (let i = 0; i < points.length; i++) {
+    const point = points[i];
+    if (point.y <= top) {
+      closed.push(point);
+      continue;
+    }
+    const previous = points[i - 1];
+    const t = (top - previous.y) / (point.y - previous.y);
+    closed.push(new Vector2(previous.x + (point.x - previous.x) * t, top));
+    break;
+  }
+  closed.push(new Vector2(0.001, top));
+  return closed;
+}
+
+/** Rayon d'un profil à une hauteur donnée (sur sa paroi montante). */
+function radiusAt(profile: Vector2[], height: number): number {
+  for (let i = 1; i < profile.length; i++) {
+    const a = profile[i - 1];
+    const b = profile[i];
+    if (b.y - a.y < 1e-4 || height < a.y || height > b.y) continue;
+    return a.x + ((b.x - a.x) * (height - a.y)) / (b.y - a.y);
+  }
+  return BOTTLE.bodyRadius;
+}
+
+function buildProceduralBottle({ label, cap, environment, lowPower, capInk }: BottleAssets): Group {
   const bottle = new Group();
   bottle.name = 'RedseaBottle';
 
+  // Partagés par plusieurs matériaux : la couleur du fond de page (vue à travers le verre, le
+  // liquide et les gouttes) et la surface libre du liquide (le verre doit savoir où elle est).
+  const backdrop = new Color(COLORS.backdrop);
+  const surface = createSurfaceUniforms();
+  const outline = glassProfile();
+
   // ---- Verre ----
-  const glassMaterial = new MeshPhysicalMaterial({
-    color: COLORS.glassTint,
-    // 1 et non 0.9 : la part non transmise est rendue comme un diffus blanc, qui voile le
-    // liquide d'un gris laiteux dès qu'elle atteint quelques pour cent.
-    transmission: 1,
-    roughness: 0.05,
-    metalness: 0,
-    ior: 1.5,
-    thickness: 0.35,
-    attenuationColor: 0xf3ddd6,
-    attenuationDistance: 9,
-    specularIntensity: 1,
-    // Vernis : seconde couche de reflets nets, comme un verre poli.
-    clearcoat: 1,
-    clearcoatRoughness: 0.04,
-    // Reflets du studio (voir `createStudioEnvironment`) : des boîtes à lumière sur fond sombre,
-    // donc des filets de lumière intenses sans voiler le liquide.
-    envMapIntensity: 1.6,
-  });
-  const glass = new Mesh(new LatheGeometry(glassProfile(), 96), glassMaterial);
+  const glass = new Mesh(
+    new LatheGeometry(outline, lowPower ? 72 : 120),
+    createGlassMaterial(environment, backdrop, surface),
+  );
   glass.name = 'Glass';
   glass.renderOrder = 2;
   bottle.add(glass);
 
-  // ---- Liquide : volume intérieur ----
+  // ---- Liquide ----
   // Le maillage monte plus haut que le niveau réel : la surface libre est découpée dans le shader
   // (voir `createLiquidMaterial`), ce qui laisse de la marge pour qu'elle s'incline et ondule.
-  const liquidTop = BOTTLE.fillLevel + LIQUID_HEADROOM;
-  const liquidPoints = glassProfile(0.2, liquidTop).filter((p) => p.y <= liquidTop);
-  const last = liquidPoints[liquidPoints.length - 1];
-  liquidPoints.push(new Vector2(last.x, liquidTop), new Vector2(0.001, liquidTop));
-  const liquid = new Mesh(new LatheGeometry(liquidPoints, 72), createLiquidMaterial());
+  const liquid = new Mesh(
+    new LatheGeometry(liquidProfile(BOTTLE.fillLevel + LIQUID_HEADROOM), 72),
+    createLiquidMaterial(backdrop, surface),
+  );
   liquid.name = 'Liquid';
   bottle.add(liquid);
 
@@ -236,65 +288,177 @@ function buildProceduralBottle({ label, cap, condensation }: BottleAssets): Grou
   labelMesh.rotation.y = -BOTTLE.labelFrontU * Math.PI * 2;
   bottle.add(labelMesh);
 
-  // ---- Capsule : métal doré à pas de vis ----
-  const goldMaterial = new MeshStandardMaterial({
-    color: COLORS.gold,
-    metalness: 1,
-    roughness: 0.32,
-    envMapIntensity: 1.25,
-  });
-  const capR = BOTTLE.capRadius;
-  const capTop = BOTTLE.height;
-  const capPath = new Path();
-  capPath.moveTo(capR - 0.02, 19.72);
-  capPath.quadraticCurveTo(capR + 0.1, 19.78, capR + 0.06, 19.95); // jupe roulée
-  capPath.lineTo(capR, 20.1);
-  capPath.lineTo(capR, capTop - 0.5);
-  capPath.lineTo(capR + 0.04, capTop - 0.46); // bandeau moleté
-  capPath.lineTo(capR + 0.04, capTop - 0.16);
-  capPath.quadraticCurveTo(capR + 0.03, capTop, capR - 0.14, capTop);
-  capPath.lineTo(0.001, capTop);
-  // Matériau propre à la capsule : même or, plus le moletage (stries verticales en relief).
-  const capMaterial = goldMaterial.clone();
-  capMaterial.bumpMap = createKnurlTexture();
-  capMaterial.bumpScale = 3;
-  const capMesh = new Mesh(new LatheGeometry(capPath.getPoints(16), 160), capMaterial);
-  capMesh.name = 'Cap';
+  // ---- Capsule à vis (voir cap.ts) ----
+  const capMesh = createCap({ logo: cap, environment, lowPower, ink: capInk });
+  capMesh.position.y = BOTTLE.height - CAP.height;
   bottle.add(capMesh);
 
-  // Pas de vis : trois filets légèrement inclinés.
-  const threadGeometry = new TorusGeometry(capR + 0.005, 0.05, 12, 160);
-  for (let i = 0; i < 3; i++) {
-    const thread = new Mesh(threadGeometry, goldMaterial);
-    thread.name = 'CapThread';
-    thread.rotation.x = Math.PI / 2 + 0.035;
-    thread.rotation.z = i * 2.1;
-    thread.position.y = 20.38 + i * 0.3;
-    bottle.add(thread);
+  // ---- Condensation (voir condensation.ts) ----
+  if (!lowPower) {
+    bottle.add(
+      createCondensation({
+        profile: outline,
+        bottom: 0.55,
+        top: 19.5,
+        bodyRadius: BOTTLE.bodyRadius,
+        labelRadius,
+        labelBottom: BOTTLE.labelBottom,
+        labelTop: BOTTLE.labelBottom + labelHeight,
+        fillLevel: BOTTLE.fillLevel,
+        backdrop,
+      }),
+    );
   }
 
-  // Logo hibiscus sur le dessus.
-  // Le logo est imprimé : l'encre rouge est mate, le fond doré reste du métal poli.
-  const printMap = createCapPrintMap(cap);
-  const capLogo = new Mesh(
-    new CircleGeometry(capR - 0.14, 128),
-    new MeshStandardMaterial({
-      map: cap,
-      metalness: 1,
-      roughness: 1,
-      metalnessMap: printMap,
-      roughnessMap: printMap,
-      envMapIntensity: 1.25,
-    }),
-  );
-  capLogo.name = 'CapLogo';
-  capLogo.rotation.x = -Math.PI / 2;
-  capLogo.position.y = capTop + 0.004;
-  bottle.add(capLogo);
-
-  if (condensation) bottle.add(createCondensation(labelRadius, BOTTLE.labelBottom, BOTTLE.labelBottom + labelHeight));
-
   return bottle;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Verre                                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** Surface libre du liquide : uniformes partagés par le liquide (qui la dessine) et le verre. */
+function createSurfaceUniforms() {
+  return {
+    uFill: { value: BOTTLE.fillLevel as number },
+    /** Pente de la surface (repère local de la bouteille, axes x et z). */
+    uTilt: { value: new Vector2() },
+    /** Creux du vortex : hauteur ajoutée proportionnelle à r². */
+    uSwirl: { value: 0 },
+    /** Onde de ballottement (mode à deux lobes) : amplitude et orientation. */
+    uWave: { value: 0 },
+    uWaveAngle: { value: 0 },
+  };
+}
+type SurfaceUniforms = ReturnType<typeof createSurfaceUniforms>;
+
+/** Rayon du liquide à son niveau de repos : le vortex se creuse autour de la moyenne de r². */
+const FILL_RADIUS = radiusAt(glassProfile(), BOTTLE.fillLevel) - LIQUID_GAP;
+
+const SURFACE_GLSL = /* glsl */ `
+  uniform float uFill;
+  uniform vec2 uTilt;
+  uniform float uSwirl;
+  uniform float uWave;
+  uniform float uWaveAngle;
+
+  /** Hauteur de la surface libre à la verticale du point (x, z), repère local de la bouteille. */
+  float surfaceHeight(vec2 p) {
+    float r2 = dot(p, p);
+    float lobes = sin(2.0 * atan(p.y, p.x) + uWaveAngle);
+    return uFill + dot(p, uTilt) + uSwirl * (r2 - ${(0.5 * FILL_RADIUS * FILL_RADIUS).toFixed(3)}) + uWave * sqrt(r2) * lobes;
+  }
+`;
+
+const GLASS_PARS = /* glsl */ `
+  uniform vec3 uBackdrop;
+  varying vec3 vBottleLocal;
+  ${SURFACE_GLSL}
+
+  float wrapAngle(float a) {
+    return atan(sin(a), cos(a));
+  }
+
+  /**
+   * Ce que renvoie le fond du studio dans une direction horizontale (azimut depuis la caméra,
+   * ±π = derrière la bouteille) : le cyclo, de la couleur de la page, plus sombre sur les côtés,
+   * et les deux filets de contre-jour (mêmes positions que dans studio.ts).
+   */
+  vec3 studioBehind(float azimuth) {
+    float a = wrapAngle(azimuth);
+    vec3 color = uBackdrop * mix(0.4, 1.0, smoothstep(radians(100.0), radians(168.0), abs(a)));
+    color += vec3(1.0) * 1.7 * (1.0 - smoothstep(radians(3.0), radians(6.0), abs(wrapAngle(a - radians(-150.0)))));
+    color += vec3(1.0, 0.96, 0.9) * 1.1 * (1.0 - smoothstep(radians(2.5), radians(5.0), abs(wrapAngle(a - radians(141.0)))));
+    return color;
+  }
+`;
+
+/**
+ * Optique du verre épais, ajoutée au matériau physique de Three.js (qui ne connaît qu'une paroi
+ * sans épaisseur). Trois zones, selon ce qu'il y a derrière la paroi :
+ *
+ * - Col vide. Entre l'âme (l'intérieur) et le bord extérieur, la lumière ne traverse pas : elle
+ *   se réfléchit totalement sur la face intérieure (verre → air, au-delà de l'angle critique).
+ *   Ces deux bandes, de la largeur de la paroi, sont des miroirs qui montrent l'arrière du studio,
+ *   du côté (bord de l'âme, dévié de +57°) jusqu'au-delà de l'axe (bord extérieur, −36°) : d'où
+ *   les traits sombres et les filets blancs qui dessinent les bords d'un verre.
+ * - Devant le liquide. L'indice de l'eau est proche de celui du verre : pas de réflexion totale,
+ *   le liquide se voit jusqu'au bord. Rien à ajouter.
+ * - Fond plein. Pas d'âme : un bloc de verre, ambré par la lumière qui a traversé le bissap,
+ *   avec l'éclat rouge de la lumière concentrée par le liquide.
+ */
+const GLASS_OPTICS = /* glsl */ `
+  {
+    // Normale et regard ramenés dans le plan perpendiculaire à l'axe de la bouteille : leur
+    // angle φ donne la position en travers (sin φ = 0 au centre, 1 au bord), que la paroi soit
+    // verticale (corps) ou inclinée (épaule, col).
+    vec3 bottleAxis = normalize((viewMatrix * modelMatrix * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+    vec3 flatNormal = normal - dot(normal, bottleAxis) * bottleAxis;
+    vec3 flatView = geometryViewDir - dot(geometryViewDir, bottleAxis) * bottleAxis;
+    float flatLength = length(flatNormal);
+    float wallRadius = length(vBottleLocal.xz);
+
+    if (!gl_FrontFacing) {
+      // Paroi du fond, vue à travers la bouteille : un second verre, donc un peu plus dense.
+      totalDiffuse *= 0.96;
+    } else if (flatLength > 0.05 && wallRadius > 0.3) {
+      flatNormal /= flatLength;
+      flatView = normalize(flatView);
+      float across = sqrt(1.0 - pow(clamp(dot(flatNormal, flatView), 0.0, 1.0), 2.0));
+      float side = sign(dot(flatNormal, cross(bottleAxis, flatView))); // −1 à gauche, +1 à droite
+
+      float level = surfaceHeight(vBottleLocal.xz);
+      float air = smoothstep(level - 0.03, level + 0.05, vBottleLocal.y);
+      float solid = 1.0 - smoothstep(0.45, 0.85, vBottleLocal.y);
+
+      // --- Col vide : bandes de réflexion totale ---
+      float bore = 1.0 - ${GLASS_WALL.toFixed(2)} / wallRadius; // rayon de l'âme / rayon extérieur
+      float inWall = smoothstep(bore - 0.012, bore + 0.012, across);
+      float travel = clamp((across - bore) / (1.0 - bore), 0.0, 1.0);
+      float azimuth = side * (PI - radians(mix(57.0, -36.0, travel)));
+      totalDiffuse = mix(totalDiffuse, studioBehind(azimuth), inWall * air);
+      // Âme : verre clair, à peine grisé, avec un trait plus dense à la limite de la paroi.
+      float boreEdge = exp(-pow((across - bore + 0.03) / 0.035, 2.0));
+      totalDiffuse *= 1.0 - air * (1.0 - inWall) * (0.05 + 0.2 * boreEdge);
+
+      // --- Fond de verre plein ---
+      vec3 block = totalDiffuse * vec3(1.0, 0.9, 0.78) * (1.0 - 0.55 * smoothstep(0.7, 1.0, across));
+      block += vec3(0.8, 0.07, 0.04) * 0.5 * exp(-pow((side * across - 0.38) / 0.3, 2.0));
+      totalDiffuse = mix(totalDiffuse, block, solid);
+    }
+  }
+`;
+
+function createGlassMaterial(environment: Texture, backdrop: Color, surface: SurfaceUniforms): MeshPhysicalMaterial {
+  const material = new MeshPhysicalMaterial({
+    color: 0xffffff,
+    // 1 et non 0.9 : la part non transmise est rendue comme un diffus blanc, qui voile le
+    // liquide d'un gris laiteux dès qu'elle atteint quelques pour cent.
+    transmission: 1,
+    roughness: 0,
+    metalness: 0,
+    ior: 1.5,
+    thickness: GLASS_WALL,
+    specularIntensity: 1,
+    // Le verre ne reflète que 4 % de face : seules les boîtes à lumière du studio y laissent un
+    // voile, et les filets de contre-jour, vus en rasance, un trait blanc. Pas de vernis ajouté :
+    // un second reflet rendrait le verre laiteux.
+    envMap: environment,
+    envMapIntensity: 1,
+    // Double face : la paroi du fond est dessinée dans la passe de transmission, on la voit donc
+    // à travers le col vide et le fond de verre, avec ses propres reflets.
+    side: DoubleSide,
+  });
+  material.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, surface, { uBackdrop: { value: backdrop } });
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vBottleLocal;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvBottleLocal = position;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\n${GLASS_PARS}`)
+      .replace('#include <transmission_fragment>', `#include <transmission_fragment>\n${GLASS_OPTICS}`);
+  };
+  return material;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -316,21 +480,14 @@ function buildProceduralBottle({ label, cap, condensation }: BottleAssets): Grou
  *   comme la surface. La surface peut ainsi s'incliner (gravité, inertie), se creuser quand le
  *   liquide tourne (vortex) et onduler, sans toucher au maillage.
  */
-function createLiquidMaterial(): ShaderMaterial {
+function createLiquidMaterial(backdrop: Color, surface: SurfaceUniforms): ShaderMaterial {
   return new ShaderMaterial({
     side: DoubleSide,
     uniforms: {
-      uBackdrop: { value: new Color(COLORS.backdrop) },
+      uBackdrop: { value: backdrop },
       uGlow: { value: new Color(COLORS.liquidGlow) },
       uAbsorption: { value: new Vector3(...LIQUID_ABSORPTION) },
-      uFill: { value: BOTTLE.fillLevel },
-      /** Pente de la surface (repère local de la bouteille, axes x et z). */
-      uTilt: { value: new Vector2() },
-      /** Creux du vortex : hauteur ajoutée proportionnelle à r². */
-      uSwirl: { value: 0 },
-      /** Onde de ballottement (mode à deux lobes) : amplitude et orientation. */
-      uWave: { value: 0 },
-      uWaveAngle: { value: 0 },
+      ...surface,
     },
     vertexShader: /* glsl */ `
       varying vec3 vLocal;
@@ -348,14 +505,10 @@ function createLiquidMaterial(): ShaderMaterial {
       uniform vec3 uBackdrop;
       uniform vec3 uGlow;
       uniform vec3 uAbsorption;
-      uniform float uFill;
-      uniform vec2 uTilt;
-      uniform float uSwirl;
-      uniform float uWave;
-      uniform float uWaveAngle;
       varying vec3 vLocal;
       varying vec3 vNormal;
       varying vec3 vView;
+      ${SURFACE_GLSL}
 
       float hash(vec2 p) {
         return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -366,12 +519,6 @@ function createLiquidMaterial(): ShaderMaterial {
         f = f * f * (3.0 - 2.0 * f);
         return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
                    mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-      }
-
-      float surfaceHeight(vec2 p) {
-        float r2 = dot(p, p);
-        float lobes = sin(2.0 * atan(p.y, p.x) + uWaveAngle);
-        return uFill + dot(p, uTilt) + uSwirl * (r2 - 0.7) + uWave * sqrt(r2) * lobes;
       }
 
       vec3 throughLiquid(float thickness) {
@@ -398,8 +545,8 @@ function createLiquidMaterial(): ShaderMaterial {
           // à droite du centre. Doublée d'un reflet plus fin à gauche.
           float band = exp(-pow((n.x - 0.38) / 0.2, 2.0));
           float band2 = exp(-pow((n.x + 0.42) / 0.09, 2.0)) * 0.45;
-          // Le fond plat concentre la lumière (éclat au ras de la base).
-          float base = 1.0 - smoothstep(0.25, 2.8, vLocal.y);
+          // Le fond épais concentre la lumière (éclat au ras de la base).
+          float base = 1.0 - smoothstep(0.6, 3.1, vLocal.y);
           // Bords sombres : lumière déviée hors de l'axe du regard.
           float edge = smoothstep(0.04, 0.5, facing);
           // Variations lentes de densité optique (réfraction du décor) : jamais un aplat.
@@ -426,170 +573,6 @@ function createLiquidMaterial(): ShaderMaterial {
       }
     `,
   });
-}
-
-/**
- * Moletage de la capsule : 140 stries verticales régulières (carte de relief qui se répète
- * autour du bouchon, coordonnée u de la révolution).
- */
-function createKnurlTexture(): CanvasTexture {
-  const width = 2048;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = 4;
-  const ctx = canvas.getContext('2d')!;
-  const ridges = 140;
-  for (let x = 0; x < width; x++) {
-    const v = 0.5 + 0.5 * Math.cos((x / width) * ridges * Math.PI * 2);
-    const level = Math.round(255 * Math.pow(v, 0.6));
-    ctx.fillStyle = `rgb(${level},${level},${level})`;
-    ctx.fillRect(x, 0, 1, 4);
-  }
-  const texture = new CanvasTexture(canvas);
-  texture.anisotropy = 8;
-  return texture;
-}
-
-/**
- * Carte « impression » du dessus de la capsule, dérivée de sa texture : canal vert = rugosité,
- * bleu = métal (convention Three.js). Encre rouge mate et non métallique, or poli ailleurs.
- */
-function createCapPrintMap(cap: Texture): CanvasTexture {
-  const image = cap.image as CanvasImageSource & { width: number; height: number };
-  const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-  ctx.drawImage(image, 0, 0);
-  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const data = pixels.data;
-  for (let i = 0; i < data.length; i += 4) {
-    // Encre : R nettement au-dessus de G (rouge ≈ 112, or ≈ 38).
-    const ink = Math.min(1, Math.max(0, (data[i] - data[i + 1] - 50) / 50));
-    data[i] = 0;
-    data[i + 1] = Math.round(255 * (0.26 + 0.34 * ink)); // rugosité
-    data[i + 2] = Math.round(255 * (1 - 0.85 * ink)); // métal
-    data[i + 3] = 255;
-  }
-  ctx.putImageData(pixels, 0, 0);
-  const texture = new CanvasTexture(canvas);
-  texture.anisotropy = 8;
-  return texture;
-}
-
-/** Rayon du verre et pente de la paroi à une hauteur donnée (pour poser les gouttes). */
-function surfaceAt(profile: Vector2[], height: number): { radius: number; slope: number } {
-  for (let i = 1; i < profile.length; i++) {
-    const a = profile[i - 1];
-    const b = profile[i];
-    if (height < a.y || height > b.y || b.y - a.y < 1e-4) continue;
-    const t = (height - a.y) / (b.y - a.y);
-    return { radius: a.x + (b.x - a.x) * t, slope: (b.x - a.x) / (b.y - a.y) };
-  }
-  return { radius: BOTTLE.neckRadius, slope: 0 };
-}
-
-/**
- * Condensation : de vraies gouttes en relief (une seule géométrie instanciée), posées sur le
- * verre et sur l'étiquette. Chaque goutte est une petite lentille d'eau : elle réfracte le liquide
- * derrière elle et accroche les boîtes à lumière du studio (point blanc net), comme sur la photo.
- * Distribution réaliste : une nuée de très petites gouttes, des moyennes, quelques grosses
- * étirées par la gravité, plus serrées sur le verre froid que sur le papier.
- */
-function createCondensation(labelRadius: number, labelBottom: number, labelTop: number): InstancedMesh {
-  const COUNT = 1100;
-  const profile = glassProfile();
-  const geometry = new SphereGeometry(1, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2); // dôme
-  geometry.rotateX(Math.PI / 2); // dôme tourné vers +Z (normale de la paroi après mise en place)
-  const material = new MeshPhysicalMaterial({
-    color: 0xffffff,
-    transmission: 1,
-    roughness: 0,
-    metalness: 0,
-    ior: 1.33,
-    thickness: 0.25,
-    specularIntensity: 1,
-    envMapIntensity: 1.8,
-  });
-  const drops = new InstancedMesh(geometry, material, COUNT);
-  drops.name = 'Condensation';
-  drops.renderOrder = 3; // après le verre
-
-  // Générateur déterministe : mêmes gouttes à chaque visite.
-  let seed = 20261116;
-  const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
-
-  const matrix = new Matrix4();
-  const normal = new Vector3();
-  const around = new Vector3();
-  const along = new Vector3();
-  let placed = 0;
-  let guard = 0;
-  while (placed < COUNT && guard++ < COUNT * 40) {
-    const height = 0.7 + rand() * 18.7;
-    const onLabel = height > labelBottom && height < labelTop;
-    const surface = surfaceAt(profile, height);
-    const radius = (onLabel ? labelRadius : surface.radius) + 0.004;
-    // Densité : proportionnelle à la surface, plus clairsemée sur le papier, un peu moins sur le col.
-    const density = (radius / BOTTLE.bodyRadius) * (onLabel ? 0.38 : 1) * (height > 16.5 ? 0.75 : 1);
-    if (rand() > density) continue;
-
-    const angle = rand() * Math.PI * 2;
-    const sin = Math.sin(angle);
-    const cos = Math.cos(angle);
-    const slope = onLabel ? 0 : surface.slope;
-    normal.set(sin, -slope, cos).normalize(); // normale sortante de la paroi
-    around.set(cos, 0, -sin); // tangente horizontale
-    along.crossVectors(normal, around).normalize(); // tangente « verticale »
-
-    // Taille : loi très asymétrique (rayon de 0,2 à 1,8 mm environ).
-    const size = (0.02 + 0.16 * Math.pow(rand(), 4)) * (onLabel ? 0.8 : 1);
-    const stretch = 1 + rand() * 0.25 + size * 3; // les grosses gouttes s'étirent vers le bas
-    const bulge = 0.42 + rand() * 0.2;
-    matrix.makeBasis(
-      around.clone().multiplyScalar(size),
-      along.clone().multiplyScalar(size * stretch),
-      normal.clone().multiplyScalar(size * bulge),
-    );
-    // Centre légèrement abaissé : la goutte pend sous son point d'accroche.
-    matrix.setPosition(sin * radius, height - size * (stretch - 1) * 0.5, cos * radius);
-    drops.setMatrixAt(placed++, matrix);
-  }
-  drops.count = placed;
-  drops.instanceMatrix.needsUpdate = true;
-  return drops;
-}
-
-/**
- * Studio photo pour les reflets du verre et de la capsule : fond brun très sombre, deux grandes
- * boîtes à lumière verticales (gauche, intense ; droite, plus étroite), un plafond diffus et un
- * sol crème. Sur un cylindre, chaque boîte devient un long filet de lumière vertical, comme
- * sur la photo de la bouteille. L'étiquette garde l'éclairage d'ambiance de la scène.
- */
-function createStudioEnvironment(renderer: WebGLRenderer): Texture {
-  const studio = new Scene();
-  studio.background = new Color(0x120a08);
-  const panel = (w: number, h: number, intensity: number, position: [number, number, number], tint = 0xfff6ec) => {
-    const material = new MeshBasicMaterial({ color: new Color(tint).multiplyScalar(intensity), side: DoubleSide });
-    const mesh = new Mesh(new PlaneGeometry(w, h), material);
-    mesh.position.set(...position);
-    mesh.lookAt(0, 0, 0);
-    studio.add(mesh);
-  };
-  panel(7, 30, 9, [-15, 3, 9]); // boîte principale, avant-gauche
-  panel(3.2, 28, 6, [15, 1, 3]); // filet de contre-jour, droite
-  panel(2, 24, 3.5, [-6, 0, -16], 0xffe2cc); // contre-jour chaud, arrière
-  panel(18, 8, 1.6, [0, 18, 2]); // plafond diffus
-  panel(40, 40, 0.35, [0, -14, 0], 0xf3e2c4); // sol crème (rebond)
-  const pmrem = new PMREMGenerator(renderer);
-  const target = pmrem.fromScene(studio, 0.015);
-  pmrem.dispose();
-  studio.traverse((object) => {
-    const mesh = object as Mesh;
-    mesh.geometry?.dispose();
-    (mesh.material as MeshBasicMaterial | undefined)?.dispose();
-  });
-  return target.texture;
 }
 
 /**
@@ -684,8 +667,9 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
 
   const camera = new PerspectiveCamera(24, 1, 1, 400);
 
+  // Lumière principale : même direction que la grande boîte du studio et que les reflets des gouttes.
   const key = new DirectionalLight(0xfff4e6, 2.1);
-  key.position.set(-18, 26, 40);
+  key.position.set(...KEY_LIGHT_DIRECTION).multiplyScalar(50);
   scene.add(key);
   const rim = new DirectionalLight(0xffe2c8, 1.4);
   rim.position.set(30, 8, -22);
@@ -706,17 +690,10 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
   // ---- Assemblage : rig (position, échelle, inclinaison) > spin (rotation Y) > modèle ----
   const rig = new Group();
   const spin = new Group();
-  const model = await loadBottleModel({ label, cap, condensation: !lowPower });
-  model.position.y = -BOTTLE.height / 2; // rotation autour du centre de la bouteille
-  // Verre et métal reflètent le studio ; l'étiquette reste sous l'éclairage d'ambiance.
+  // Verre et métal reflètent le studio photo ; l'étiquette reste sous l'éclairage d'ambiance.
   const studio = createStudioEnvironment(renderer);
-  const studioMeshes = new Set(['Glass', 'Cap', 'CapThread', 'CapLogo', 'Condensation']);
-  model.traverse((object) => {
-    const material = (object as Mesh).material as MeshStandardMaterial | undefined;
-    if (!material || !studioMeshes.has(object.name)) return;
-    material.envMap = studio;
-    material.needsUpdate = true;
-  });
+  const model = await loadBottleModel({ label, cap, environment: studio, lowPower, capInk: options.capInk });
+  model.position.y = -BOTTLE.height / 2; // rotation autour du centre de la bouteille
   spin.add(model);
   rig.add(spin);
   const shadow = createContactShadow();
@@ -870,16 +847,16 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
     const targetZ = alpha * 0.005;
     slosh.rateX += (SPRING * (targetX - slosh.tiltX) - DAMPING * slosh.rateX) * dt;
     slosh.rateZ += (SPRING * (targetZ - slosh.tiltZ) - DAMPING * slosh.rateZ) * dt;
-    slosh.tiltX = Math.max(-0.6, Math.min(0.6, slosh.tiltX + slosh.rateX * dt));
-    slosh.tiltZ = Math.max(-0.6, Math.min(0.6, slosh.tiltZ + slosh.rateZ * dt));
+    slosh.tiltX = Math.max(-0.42, Math.min(0.42, slosh.tiltX + slosh.rateX * dt));
+    slosh.tiltZ = Math.max(-0.42, Math.min(0.42, slosh.tiltZ + slosh.rateZ * dt));
 
     // Le liquide rattrape la rotation de la bouteille avec retard.
     slosh.liquidOmega += (slosh.omega - slosh.liquidOmega) * smooth(dt, 1.6);
-    const swirl = Math.min(0.9, slosh.liquidOmega * slosh.liquidOmega * 0.03);
+    const swirl = Math.min(0.42, slosh.liquidOmega * slosh.liquidOmega * 0.014);
     slosh.relAngle += (slosh.liquidOmega - slosh.omega) * dt;
 
     // Onde : relancée par les à-coups, amortie en ~2 s.
-    slosh.wave = Math.max(slosh.wave * Math.exp(-dt * 1.3), Math.min(0.38, Math.abs(alpha) * 0.012));
+    slosh.wave = Math.max(slosh.wave * Math.exp(-dt * 1.3), Math.min(0.27, Math.abs(alpha) * 0.0085));
     slosh.waveTime += dt;
 
     // Passage dans le repère local du maillage (qui tourne avec la bouteille).
@@ -984,7 +961,8 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
     getScreenRect,
     setBackdrop(r, g, b) {
       backdrop.setRGB(r, g, b, SRGBColorSpace);
-      // Le liquide est translucide : il laisse voir (et filtre) ce même fond.
+      // Le liquide, le verre et les gouttes laissent voir ce même fond : ils partagent une
+      // seule couleur, accessible par le matériau du liquide.
       liquidUniforms?.uBackdrop.value.copy(backdrop);
     },
     flip() {
@@ -1026,12 +1004,17 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
     dispose() {
       stop();
       canvas.removeEventListener('webglcontextlost', onContextLost);
+      const disposeMaterial = (material: Material) => {
+        // Les textures créées par le code (capsule imprimée, ombres) partent avec leur matériau.
+        for (const value of Object.values(material)) if (value instanceof Texture) value.dispose();
+        material.dispose();
+      };
       scene.traverse((object) => {
         const mesh = object as Mesh;
         mesh.geometry?.dispose();
         const material = mesh.material;
-        if (Array.isArray(material)) material.forEach((m) => m.dispose());
-        else material?.dispose();
+        if (Array.isArray(material)) material.forEach(disposeMaterial);
+        else if (material) disposeMaterial(material);
       });
       label.dispose();
       cap.dispose();
