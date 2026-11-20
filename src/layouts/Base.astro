@@ -3,7 +3,7 @@ import '../styles/global.css';
 import { brand, seo, nav, analytics } from '../content/site';
 import hibiscus from '../assets/hibiscus.png';
 import { Image } from 'astro:assets';
-import { PALETTE, PALETTE_ASSETS } from '../palette';
+import { DEFAULT_PALETTE, PALETTES, type PaletteName } from '../palette';
 
 interface Props {
   title?: string;
@@ -25,18 +25,21 @@ const ogImage = new URL(seo.ogImage, Astro.site);
 const year = new Date().getFullYear();
 const isHome = Astro.url.pathname === '/';
 const quoteHref = isHome ? '#devis' : '/#devis';
+const editions: PaletteName[] = ['classique', 'noir'];
 ---
 
 <!doctype html>
-<html lang="fr" data-palette={PALETTE}>
+<html lang="fr" data-palette={DEFAULT_PALETTE}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- Édition choisie pendant la visite, appliquée avant le premier affichage (voir src/palette.ts). -->
+    <script is:inline src="/edition.js"></script>
     <title>{title}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     {noindex && <meta name="robots" content="noindex" />}
-    <meta name="theme-color" content={PALETTE_ASSETS.themeColor} />
+    <meta name="theme-color" content={PALETTES[DEFAULT_PALETTE].themeColor} />
     <meta name="referrer" content="strict-origin-when-cross-origin" />
 
     <link rel="preload" href={DISPLAY_FONT_URL} as="font" type="font/woff2" crossorigin />
@@ -71,7 +74,24 @@ const quoteHref = isHome ? '#devis' : '/#devis';
 
     <header class:list={['site-header', { 'site-header--static': staticHeader }]} data-header data-theme={headerTheme} data-at-quote="false">
       <a class="site-header__brand" href="/" aria-label={`${brand.name}, retour à l’accueil`}>{brand.name}</a>
-      <a class="site-header__cta label" href={quoteHref}>{nav.quoteLabel}</a>
+      <div class="site-header__actions">
+        <div class="edition" role="group" aria-label="Édition du site">
+          {
+            editions.map((name) => (
+              <button
+                class={`edition__swatch edition__swatch--${name}`}
+                type="button"
+                data-edition={name}
+                aria-pressed={name === DEFAULT_PALETTE ? 'true' : 'false'}
+                title={`Édition ${PALETTES[name].title}`}
+              >
+                <span class="sr-only">Édition {PALETTES[name].title}</span>
+              </button>
+            ))
+          }
+        </div>
+        <a class="site-header__cta label" href={quoteHref}>{nav.quoteLabel}</a>
+      </div>
     </header>
 
     <slot name="before" />
@@ -95,8 +115,12 @@ const quoteHref = isHome ? '#devis' : '/#devis';
         </div>
         <nav class="site-footer__col" aria-label="Informations légales">
           <p class="label">Légal</p>
-          <a href="/mentions-legales">Mentions légales</a>
-          <a href="/confidentialite">Politique de confidentialité</a>
+          <a href="/mentions-legales" target="_blank" rel="noopener">
+            Mentions légales<span class="sr-only"> (nouvel onglet)</span>
+          </a>
+          <a href="/confidentialite" target="_blank" rel="noopener">
+            Politique de confidentialité<span class="sr-only"> (nouvel onglet)</span>
+          </a>
         </nav>
         <div class="site-footer__col">
           <p class="label">Fabrication</p>
@@ -108,5 +132,9 @@ const quoteHref = isHome ? '#devis' : '/#devis';
     </footer>
 
     <div class="grain" aria-hidden="true"></div>
+
+    <script>
+      import '../scripts/edition';
+    </script>
   </body>
 </html>

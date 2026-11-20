@@ -14,7 +14,8 @@ import Lenis from 'lenis';
 import 'lenis/dist/lenis.css';
 import type { BottleController } from '../three/Bottle';
 import { initQuoteForm } from './quote-form';
-import { PALETTE_ASSETS } from '../palette';
+import { PALETTES, currentPalette, type PaletteName } from '../palette';
+import { otherPalette, requestEdition, setEditionTransition } from './edition';
 
 gsap.registerPlugin(ScrollTrigger, CustomEase);
 
@@ -23,8 +24,16 @@ const EASE_OUT = CustomEase.create('redsea-out', '0.16, 1, 0.3, 1');
 const EASE_CURTAIN = CustomEase.create('redsea-curtain', '0.76, 0, 0.24, 1');
 const EASE_SOFT = CustomEase.create('redsea-soft', '0.33, 0.01, 0.12, 1');
 
-/** Textures de la bouteille : celles de la palette active (voir src/palette.ts). */
-const TEXTURES = PALETTE_ASSETS;
+/** Textures de la bouteille pour l'édition affichée (voir src/palette.ts). */
+function bottleTextures() {
+  const assets = PALETTES[currentPalette()];
+  return {
+    // Étiquette haute définition sur ordinateur, où la bouteille est affichée en grand.
+    labelUrl: smallScreen ? assets.label : assets.labelHd,
+    capUrl: assets.cap,
+    capInk: assets.capInk,
+  };
+}
 
 /**
  * Durée de scroll de chaque scène, en écrans (1 = 100svh). À garder en phase avec les hauteurs
@@ -45,9 +54,14 @@ function tokenColor(token: string, fallback: string) {
   return { r: ((n >> 16) & 255) / 255, g: ((n >> 8) & 255) / 255, b: (n & 255) / 255 };
 }
 
-/** Couleurs de fond des scènes (sRGB 0–1) : le verre de la bouteille les réfracte. */
-const CREAM = tokenColor('--cream', '#f3e2c4');
-const RED = tokenColor('--red', '#7a0a10');
+/** Couleurs de fond des scènes (sRGB 0–1) : relues à chaque changement d'édition. */
+const CREAM = { r: 0, g: 0, b: 0 };
+const RED = { r: 0, g: 0, b: 0 };
+function readSceneColors() {
+  Object.assign(CREAM, tokenColor('--cream', '#f3e2c4'));
+  Object.assign(RED, tokenColor('--red', '#7a0a10'));
+}
+readSceneColors();
 
 const $ = <T extends Element = HTMLElement>(selector: string, root: ParentNode = document) =>
   root.querySelector<T>(selector);
@@ -159,8 +173,13 @@ function setupLoader() {
 /** Pose pilotée par le scroll (même forme que BottlePose) + offsets de l'intro. */
 const pose = { spin: 0, x: 0, y: 0, scale: 1, tiltX: 0.1, tiltZ: 0 };
 const intro = { y: reducedMotion ? 0 : -1.05, spin: reducedMotion ? 0 : -1.5 };
-/** Fond réfracté par le verre : suit la couleur de la scène en cours. */
-const backdrop = { ...CREAM };
+/**
+ * Fond réfracté par le verre : suit la couleur de la scène en cours. Mélange (0 = crème,
+ * 1 = rouge) et non couleur figée : il reste juste après un changement d'édition.
+ */
+const backdrop = { mix: 0 };
+/** Bouteille 3D affichée : reconstruite avec l'autre étiquette quand l'édition change. */
+let bottleStage: { rebuild(): Promise<void> } | null = null;
 /** Vrai tant que les scènes fixes sont à l'écran (faux une fois le devis déroulé par-dessus). */
 let scenesOnScreen = true;
 
@@ -178,33 +197,31 @@ function showFallback(onLoaded: () => void) {
 }
 
 async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleController | null> {
-  const canvas = $<HTMLCanvasElement>('[data-bottle-canvas]');
+  const stage = $('[data-stage]');
+  const firstCanvas = $<HTMLCanvasElement>('[data-bottle-canvas]');
   const hit = $<HTMLButtonElement>('[data-bottle-hit]');
-  if (!canvas || !hit) return null;
+  if (!stage || !firstCanvas || !hit) return null;
+  let canvas: HTMLCanvasElement = firstCanvas;
 
   // Three.js n'est téléchargé qu'ici, dans un chunk séparé.
   const { createBottle } = await import('../three/Bottle');
   onProgress(0.25);
-  const textures = {
-    // Étiquette haute définition sur ordinateur, où la bouteille est affichée en grand.
-    labelUrl: smallScreen ? TEXTURES.label : TEXTURES.labelHd,
-    capUrl: TEXTURES.cap,
-    capInk: TEXTURES.capInk,
-  };
-  const bottle = await createBottle({
-    canvas,
-    ...textures,
-    lowPower: smallScreen,
-    onProgress: (ratio) => onProgress(0.25 + ratio * 0.75),
-    onContextLost: () => {
-      canvas.classList.remove('is-ready');
-      showFallback(() => {});
-    },
-  });
+  const build = (target: HTMLCanvasElement, progress?: (ratio: number) => void) =>
+    createBottle({
+      canvas: target,
+      ...bottleTextures(),
+      lowPower: smallScreen,
+      onProgress: progress,
+      onContextLost: () => {
+        target.classList.remove('is-ready');
+        showFallback(() => {});
+      },
+    });
+  let bottle = await build(canvas, (ratio) => onProgress(0.25 + ratio * 0.75));
 
   canvas.classList.add('is-ready');
   hit.hidden = false;
-  new ResizeObserver(() => bottle.resize()).observe(canvas);
+  new ResizeObserver(() => bottle.resize()).observe(stage);
 
   // À chaque image : la pose (scroll + intro) est recopiée, la zone de drag recalée sur la
   // bouteille. La boucle de rendu ne tourne que si la bouteille est réellement visible.
@@ -230,7 +247,8 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
     Object.assign(bottle.pose, pose);
     bottle.pose.y = y;
     bottle.pose.spin = pose.spin + intro.spin;
-    bottle.setBackdrop(backdrop.r, backdrop.g, backdrop.b);
+    const m = backdrop.mix;
+    bottle.setBackdrop(CREAM.r + (RED.r - CREAM.r) * m, CREAM.g + (RED.g - CREAM.g) * m, CREAM.b + (RED.b - CREAM.b) * m);
     const rect = bottle.getScreenRect();
     if (!rect) return;
     const signature = `${rect.left.toFixed(0)}|${rect.top.toFixed(0)}|${rect.width.toFixed(0)}|${rect.height.toFixed(0)}`;
@@ -241,14 +259,49 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
     hit.style.height = `${rect.height.toFixed(1)}px`;
   });
 
-  bindBottleInteractions(hit, bottle);
+  // Changement d'édition : une nouvelle bouteille (autre étiquette, autre encre de capsule) est
+  // construite sur un canvas neuf, puis remplace l'ancienne d'un coup. Un canvas neuf plutôt
+  // que le même : chaque bouteille garde son propre contexte WebGL, rien ne se mélange.
+  bottleStage = {
+    async rebuild() {
+      const fresh = canvas.cloneNode(false) as HTMLCanvasElement;
+      fresh.classList.remove('is-ready');
+      fresh.style.visibility = 'hidden'; // la boucle ci-dessus l'affiche si la bouteille est à l'écran
+      canvas.after(fresh);
+      let next: BottleController;
+      try {
+        next = await build(fresh);
+      } catch (error) {
+        fresh.remove();
+        console.warn('[REDSEA] Étiquette de l’autre édition indisponible : bouteille inchangée.', error);
+        return;
+      }
+      bottle.dispose();
+      canvas.remove();
+      bottle = next;
+      canvas = fresh;
+      canvas.classList.add('is-ready');
+      running = false;
+      lastRect = '';
+    },
+  };
+
+  bindBottleInteractions(hit, () => bottle);
   return bottle;
 }
 
-function bindBottleInteractions(hit: HTMLElement, bottle: BottleController) {
+/** Part haute de la bouteille (capsule) : la « dévisser » change d'édition. */
+const CAP_ZONE = 0.1;
+
+function bindBottleInteractions(hit: HTMLElement, current: () => BottleController) {
   const cursor = $('[data-cursor]');
   const moveX = cursor ? gsap.quickTo(cursor, 'x', { duration: 0.35, ease: 'power3.out' }) : null;
   const moveY = cursor ? gsap.quickTo(cursor, 'y', { duration: 0.35, ease: 'power3.out' }) : null;
+  const turnLabel = cursor?.textContent ?? '';
+  const onCap = (event: PointerEvent) => {
+    const rect = hit.getBoundingClientRect();
+    return event.clientY - rect.top < rect.height * CAP_ZONE;
+  };
 
   let pointerId: number | null = null;
   let lastX = 0;
@@ -262,27 +315,39 @@ function bindBottleInteractions(hit: HTMLElement, bottle: BottleController) {
     lastX = event.clientX;
     travelled = 0;
     downAt = performance.now();
-    bottle.dragStart();
+    current().dragStart();
     cursor?.classList.add('is-dragging');
   });
 
   hit.addEventListener('pointermove', (event) => {
     moveX?.(event.clientX);
     moveY?.(event.clientY);
+    // Clin d'œil : sur la capsule, le curseur propose de la dévisser.
+    if (cursor && pointerId === null) {
+      const label = onCap(event) ? 'Dévisser' : turnLabel;
+      if (cursor.textContent !== label) cursor.textContent = label;
+    }
     if (event.pointerId !== pointerId) return;
     const dx = event.clientX - lastX;
     lastX = event.clientX;
     travelled += Math.abs(dx);
-    bottle.dragMove(dx);
+    current().dragMove(dx);
   });
 
   const release = (event: PointerEvent) => {
     if (event.pointerId !== pointerId) return;
     pointerId = null;
-    bottle.dragEnd();
+    current().dragEnd();
     cursor?.classList.remove('is-dragging');
-    // Clic sans glisser : demi-tour vers l'autre face de l'étiquette.
-    if (event.type === 'pointerup' && travelled < 6 && performance.now() - downAt < 450) bottle.flip();
+    if (event.type !== 'pointerup' || travelled >= 6 || performance.now() - downAt >= 450) return;
+    if (onCap(event)) {
+      // Capsule dévissée : un tour sur elle-même, puis l'autre édition.
+      current().nudge(-Math.PI * 2);
+      window.setTimeout(() => void requestEdition(otherPalette()), 380);
+    } else {
+      // Clic sans glisser : demi-tour vers l'autre face de l'étiquette.
+      current().flip();
+    }
   };
   hit.addEventListener('pointerup', release);
   hit.addEventListener('pointercancel', release);
@@ -296,14 +361,63 @@ function bindBottleInteractions(hit: HTMLElement, bottle: BottleController) {
 
   // Clavier : flèches pour tourner, Entrée / Espace pour le demi-tour.
   hit.addEventListener('keydown', (event) => {
-    if (event.key === 'ArrowLeft') bottle.nudge(-0.7);
-    else if (event.key === 'ArrowRight') bottle.nudge(0.7);
+    if (event.key === 'ArrowLeft') current().nudge(-0.7);
+    else if (event.key === 'ArrowRight') current().nudge(0.7);
     else return;
     event.preventDefault();
   });
   hit.addEventListener('click', (event) => {
-    if (event.detail === 0) bottle.flip(); // activation clavier (le clic souris est géré au pointerup)
+    if (event.detail === 0) current().flip(); // activation clavier (le clic souris est géré au pointerup)
   });
+}
+
+/**
+ * Changement d'édition sur l'accueil : un rideau aux couleurs de l'édition suivante monte et
+ * l'annonce, le site et la bouteille changent derrière lui, puis il se lève.
+ */
+async function switchEdition(name: PaletteName, apply: () => void, lenis: Lenis | null) {
+  const curtain = $('[data-curtain]');
+  const word = curtain?.querySelector<HTMLElement>('.curtain__word');
+  const swap = async () => {
+    apply();
+    readSceneColors();
+    await bottleStage?.rebuild();
+  };
+  if (!curtain || !word || reducedMotion) {
+    await swap();
+    return;
+  }
+  lenis?.stop();
+  const { tokens, title } = PALETTES[name];
+  const quoteWord = word.textContent;
+  curtain.classList.remove('curtain--cream');
+  curtain.classList.add('curtain--edition');
+  curtain.style.setProperty('--red', tokens.red);
+  curtain.style.setProperty('--red-deep', tokens.redDeep);
+  curtain.style.setProperty('--cream', tokens.cream);
+  word.textContent = title;
+  await gsap
+    .timeline()
+    .set(curtain, { visibility: 'visible' })
+    .fromTo(
+      curtain,
+      { clipPath: 'inset(100% 0% 0% 0%)' },
+      { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.75, ease: 'expo.inOut' },
+    )
+    .fromTo(word, { yPercent: 60, autoAlpha: 0 }, { yPercent: 0, autoAlpha: 1, duration: 0.6, ease: EASE_OUT }, 0.35)
+    .then();
+  // Le temps de lire le nom de l'édition, même si la nouvelle bouteille est prête plus tôt.
+  await Promise.all([swap(), new Promise((resolve) => setTimeout(resolve, 450))]);
+  await gsap
+    .timeline()
+    .to(word, { yPercent: -50, autoAlpha: 0, duration: 0.45, ease: 'power2.in' })
+    .to(curtain, { clipPath: 'inset(0% 0% 100% 0%)', duration: 0.85, ease: 'expo.inOut' }, '<0.1')
+    .set(curtain, { visibility: 'hidden', clipPath: 'inset(100% 0% 0% 0%)' })
+    .then();
+  curtain.classList.remove('curtain--edition');
+  for (const token of ['--red', '--red-deep', '--cream']) curtain.style.removeProperty(token);
+  word.textContent = quoteWord;
+  lenis?.start();
 }
 
 /* -------------------------------------------------------------------------- */
@@ -501,7 +615,7 @@ function setupScenes({ fallback }: SceneOptions) {
       { clipPath: 'circle(125% at 50% 52%)', duration: 0.8, ease: 'power2.inOut' },
       1.3,
     );
-    heroTl.to(backdrop, { ...RED, duration: 0.35 }, 1.45);
+    heroTl.to(backdrop, { mix: 1, duration: 0.35 }, 1.45);
     heroTl.fromTo(aboutFront, { opacity: 0 }, { opacity: 1, duration: 0.3 }, 1.85);
     heroTl.set({}, {}, SCENE_LENGTH.hero);
 
@@ -522,13 +636,15 @@ function setupScenes({ fallback }: SceneOptions) {
 
     // Sortie : le texte s'efface vers le haut, le fond crème arrive par la droite.
     aboutTl.to(aboutFront, { opacity: 0, y: () => -vh() * 0.08, duration: 0.4, ease: 'power2.in' }, 1.6);
+    // Le texte des arguments est découpé avec son fond : en remontant, il disparaît avec lui
+    // au lieu de traîner par-dessus la scène précédente.
     aboutTl.fromTo(
-      argsBg,
+      [argsBg, ...argsLayers],
       { clipPath: 'inset(0% 0% 0% 100%)' },
       { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.65, ease: 'power2.inOut' },
       1.7,
     );
-    aboutTl.to(backdrop, { ...CREAM, duration: 0.3 }, 1.92);
+    aboutTl.to(backdrop, { mix: 0, duration: 0.3 }, 1.92);
     aboutTl.set({}, {}, SCENE_LENGTH.about);
 
     /* ----------------------------- Scène 3 : arguments ---------------------------- */
@@ -559,13 +675,15 @@ function setupScenes({ fallback }: SceneOptions) {
       argsReveal.to(title, { yPercent: 0, duration: 0.9, ease: 'power3.out' }, at + (struck ? 0.55 : 0.1));
       argsReveal.to(details, { opacity: 1, y: 0, duration: 0.7, stagger: 0.08 }, at + (struck ? 0.75 : 0.3));
     });
+    // Déclenché quand le fond crème couvre presque tout l'écran ; en remontant, le texte
+    // s'efface très vite (le fond repart, il ne doit pas traîner par-dessus la scène rouge).
     ScrollTrigger.create({
       trigger: args,
-      start: 'top 20%',
+      start: 'top 8%',
       end: 'max',
       onEnter: () => argsReveal.timeScale(1).play(),
       onEnterBack: () => argsReveal.timeScale(1).play(),
-      onLeaveBack: () => argsReveal.timeScale(2.5).reverse(),
+      onLeaveBack: () => argsReveal.timeScale(6).reverse(),
     });
 
     // Piloté par le scroll : seulement la bouteille (un tour, retour de face) et la sortie.
@@ -609,7 +727,7 @@ function setupScenes({ fallback }: SceneOptions) {
     return () => {
       // Changement de mise en page (bureau ↔ mobile) : GSAP annule les timelines, on remet la pose à zéro.
       Object.assign(pose, { spin: 0, x: 0, y: 0, scale: 1, tiltX: 0.1, tiltZ: 0 });
-      Object.assign(backdrop, CREAM);
+      backdrop.mix = 0;
     };
   });
 }
@@ -782,6 +900,7 @@ async function init() {
   ScrollTrigger.refresh();
 
   if (lenis) setupQuoteJump(lenis, scenes);
+  setEditionTransition((name, apply) => switchEdition(name, apply, lenis));
 
   const exiting = exit();
   if (playIntro) {

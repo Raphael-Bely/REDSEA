@@ -42,26 +42,41 @@ En développement, **sans clé Resend ni Turnstile**, le formulaire fonctionne q
 
 Paramètres d'URL utiles pour tester : `?bottle=3d` force la scène 3D, `?bottle=fallback` force l'image de secours.
 
-### Deux palettes : classique et noir
+### Deux éditions : beige & rouge, noir & rose
 
-Le site existe en deux habillages, choisis au lancement :
+Le site existe en deux éditions, comme l'étiquette :
 
-| Commande | Palette |
+| Édition | Étiquette | Site |
+| --- | --- | --- |
+| **classique** | beige, lettres rouges facettées (`beige.pdf`) | beige et rouge |
+| **noir** | noire, lettres roses facettées (`rose.pdf`) | noir et rose |
+
+**Le visiteur choisit** pendant sa visite :
+
+- avec les deux **pastilles de l'en-tête** (beige/rouge, noir/rose), sur toutes les pages ;
+- ou, clin d'œil, en **« dévissant » la capsule** : survoler le haut de la bouteille fait apparaître « Dévisser » sous le curseur, un clic la fait tourner et change d'édition.
+
+Sur l'accueil, un rideau aux couleurs de l'édition suivante monte et l'annonce, le site et la bouteille (nouvelle étiquette, nouvelle encre de capsule) changent derrière lui. Le choix est gardé le temps de la visite (`sessionStorage`), pages légales comprises ; une nouvelle visite repart sur l'édition par défaut.
+
+**Édition par défaut**, choisie au lancement :
+
+| Commande | Édition par défaut |
 | --- | --- |
-| `npm run dev` | **classique** : étiquette beige, site beige et rouge (par défaut) |
-| `npm run dev --noir` | **noir** : étiquette noire au texte rose, site noir et rose |
-| `npm run build --noir` | build de production en palette noir |
+| `npm run dev` | classique |
+| `npm run dev --noir` | noir |
+| `npm run build --noir` | build de production, noir par défaut |
 
-Au démarrage, la console indique la palette active (`[redsea-palette] Palette « noir » …`). Sur Vercel, définir la variable d'environnement `REDSEA_PALETTE=noir` pour déployer la version noire.
+Au démarrage, la console indique l'édition par défaut (`[redsea-palette] Palette « noir » …`). En ligne, la variable d'environnement `REDSEA_PALETTE=noir` (Netlify ou Vercel) fait de même.
 
 Où ça se règle :
 
 - **couleurs** : jetons CSS dans `src/styles/global.css` (bloc `:root[data-palette='noir']`). Les rôles s'inversent : le fond beige devient noir, le rouge devient le rose de l'étiquette, les sections sombres (devis, pied de page) passent en rose pâle ; sur les fonds roses, l'or devient un bronze foncé pour rester lisible ;
-- **textures de la bouteille** : `src/palette.ts` (étiquette, encre du logo de la capsule) ;
-- **lettres facettées** : comme « REDSEA » et « BISSAP » sur l'étiquette noire, les grands titres roses (titre du hero, titres des arguments, rideau « Devis », titres des pages légales) sont remplis d'un motif de triangles dans les roses relevés sur l'étiquette (`public/textures/noir/lowpoly.svg`, règle `background-clip: text` dans `global.css`) ;
-- **étiquette noire et motif de facettes** : générés depuis `rose.pdf` par `python3 scripts/prepare-noir.py` (recadrage sur l'étiquette, retrait des 8 mm recouverts par le recouvrement, logo recalé face caméra, roses des facettes relevés sur l'étiquette) → `public/textures/noir/`. À relancer si le PDF change.
+- **textures de la bouteille, nom des éditions, couleurs du rideau** : `src/palette.ts` ;
+- **changement d'édition** : `src/scripts/edition.ts` (pastilles), `public/edition.js` (choix appliqué avant le premier affichage), `switchEdition()` dans `src/scripts/main.ts` (rideau, bouteille reconstruite) ;
+- **lettres facettées** : comme « REDSEA » et « BISSAP » sur les étiquettes, les grands titres (hero, arguments, rideau « Devis », pages légales) sont remplis d'un motif de triangles dans les teintes de l'étiquette de l'édition (`public/textures/<édition>/lowpoly.png`, règle `background-clip: text` dans `global.css`). Image PNG et non SVG : un SVG de ~1500 triangles est redessiné à chaque image quand les lettres bougent, ce qui saccadait (surtout sous Firefox) ;
+- **étiquettes et motifs** : générés depuis `beige.pdf` et `rose.pdf` par `python3 scripts/prepare-labels.py` (recadrage sur l'étiquette, retrait des 8 mm recouverts par le recouvrement, logo recalé face caméra, teintes des facettes relevées sur l'étiquette) → `public/textures/beige/` et `public/textures/noir/`. À relancer si un PDF change.
 
-Non décliné en noir pour l'instant : l'image de secours de la bouteille (photo beige, affichée sans WebGL ou avec « réduire les animations »), l'image de partage `og.jpg` et les favicons.
+Non décliné par édition pour l'instant : l'image de secours de la bouteille (photo de l'ancienne étiquette, affichée sans WebGL ou avec « réduire les animations »), l'image de partage `og.jpg` et les favicons.
 
 ---
 
@@ -129,16 +144,21 @@ Le script Turnstile n'est chargé que lorsque le visiteur approche du formulaire
 
 ---
 
-## 4. Déploiement (Vercel)
+## 4. Déploiement (Netlify ou Vercel)
 
-1. Pousser le dépôt sur GitHub/GitLab, puis **Vercel → Add New → Project** et l'importer. Le framework Astro est détecté automatiquement.
-2. Vérifier que la version de Node du projet est **22.x** (Settings → General → Node.js Version).
-3. Renseigner les variables d'environnement (section 3), dont `SITE_URL`.
-4. Déployer.
+L'hébergeur est détecté au build (`astro.config.mjs`) : l'adaptateur Netlify ou Vercel est choisi automatiquement. Seule la route `/api/devis` devient une fonction serveur ; tout le reste est statique.
 
-Les **en-têtes de sécurité** sont dans `vercel.json` : Content-Security-Policy stricte (`'self'` + Turnstile uniquement), HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, Permissions-Policy restrictive, `frame-ancestors 'none'`. Ils ne s'appliquent pas en `npm run dev` : les contrôler sur un déploiement de préversion (par exemple avec securityheaders.com).
+**Netlify** (offre gratuite, usage commercial autorisé) :
 
-Le build ne produit ni source map, ni script ou style inline (c'est ce qui permet une CSP sans `'unsafe-inline'`). Ne pas ajouter d'attribut `style="…"` ni de `<script is:inline>` dans les pages : ils seraient bloqués.
+1. Pousser le dépôt sur GitHub, puis **Netlify → Add new project → Import an existing project** et choisir le dépôt. Les réglages viennent de `netlify.toml` (commande `npm run build`, dossier `dist`, Node 22) : ne rien changer dans l'interface.
+2. **Project configuration → Environment variables** : ajouter les variables de la section 3 (`RESEND_API_KEY`, `TURNSTILE_SECRET_KEY`, `PUBLIC_TURNSTILE_SITE_KEY`, et `SITE_URL` une fois le nom de domaine branché). `REDSEA_PALETTE` vaut `classique` par défaut dans `netlify.toml`.
+3. Redéployer (**Deploys → Trigger deploy**) après chaque changement de variable.
+
+**Vercel** : **Add New → Project**, importer le dépôt, Node **22.x**, mêmes variables. Attention, l'offre gratuite de Vercel (Hobby) est réservée à un usage personnel non commercial : un site de vente aux professionnels relève de l'offre payante.
+
+Les **en-têtes de sécurité** sont dans `vercel.json` et `netlify.toml` (à garder identiques) : Content-Security-Policy stricte (`'self'` + Turnstile uniquement), HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, Permissions-Policy restrictive, `frame-ancestors 'none'`. Ils ne s'appliquent pas en `npm run dev` : les contrôler sur un déploiement de préversion (par exemple avec securityheaders.com).
+
+Le build ne produit ni source map, ni script ou style inline (c'est ce qui permet une CSP sans `'unsafe-inline'`). Ne pas ajouter d'attribut `style="…"` ni de code dans un `<script is:inline>` : ils seraient bloqués (un `<script is:inline src="/…">` vers un fichier du site, comme `edition.js`, est autorisé).
 
 **Cloudflare Pages à la place de Vercel** : remplacer l'adaptateur (`npm i @astrojs/cloudflare`, puis `adapter: cloudflare()` dans `astro.config.mjs`) et recopier les en-têtes de `vercel.json` dans un fichier `public/_headers`. Le code de la route `/api/devis` n'utilise que `fetch` et des API web standard : il n'a pas à changer.
 

@@ -42,15 +42,24 @@
 }
 
 /*
- * Grandes lettres roses facettées, comme « REDSEA » et « BISSAP » sur l'étiquette noire :
- * le texte est rempli d'un motif de triangles dans les roses relevés sur l'étiquette
- * (public/textures/noir/lowpoly.svg, généré par scripts/prepare-noir.py). La taille du motif
- * suit celle du texte (em) : mêmes proportions de facettes sur tous les titres.
- * Sans prise en charge de background-clip: text, le texte reste rose uni.
+ * Grandes lettres facettées, comme « REDSEA » et « BISSAP » sur les deux étiquettes : le
+ * texte est rempli d'un motif de triangles dans les teintes relevées sur l'étiquette de
+ * l'édition (rouges sur beige, roses sur noir). Motifs générés par scripts/prepare-labels.py.
+ * Image PNG et non SVG : un SVG de ~1500 triangles est redessiné à chaque image quand les
+ * lettres bougent (saccades au scroll). La taille du motif suit celle du texte (em).
+ * Sans prise en charge de background-clip: text, le texte reste de couleur unie.
  */
+:root {
+  --facets: url('/textures/beige/lowpoly.png');
+}
+
+:root[data-palette='noir'] {
+  --facets: url('/textures/noir/lowpoly.png');
+}
+
 @supports (background-clip: text) or (-webkit-background-clip: text) {
-  :root[data-palette='noir'] :is(.hero__letter, .args__title-inner, .legal__title, .curtain--cream .curtain__word) {
-    background: url('/textures/noir/lowpoly.svg') 0 0 / 2.2em 2.2em repeat var(--red);
+  :is(.hero__letter, .args__title-inner, .legal__title, .curtain--cream .curtain__word) {
+    background: var(--facets) 0 0 / 2.2em 2.2em repeat var(--red);
     background-position:
       calc(var(--facet-i, 0) * 1.37em + var(--facet-part, 0em))
       calc(var(--facet-i, 0) * 0.83em + var(--facet-part, 0em));
@@ -61,22 +70,22 @@
   }
 
   /* Chaque lettre du grand titre prend une autre zone du motif : jamais deux lettres pareilles. */
-  :root[data-palette='noir'] .hero__part:nth-child(2) {
+  .hero__part:nth-child(2) {
     --facet-part: 1.9em;
   }
-  :root[data-palette='noir'] .hero__letter:nth-child(2) {
+  .hero__letter:nth-child(2) {
     --facet-i: 1;
   }
-  :root[data-palette='noir'] .hero__letter:nth-child(3) {
+  .hero__letter:nth-child(3) {
     --facet-i: 2;
   }
-  :root[data-palette='noir'] .hero__letter:nth-child(4) {
+  .hero__letter:nth-child(4) {
     --facet-i: 3;
   }
-  :root[data-palette='noir'] .hero__letter:nth-child(5) {
+  .hero__letter:nth-child(5) {
     --facet-i: 4;
   }
-  :root[data-palette='noir'] .hero__letter:nth-child(n + 6) {
+  .hero__letter:nth-child(n + 6) {
     --facet-i: 5;
   }
 }
@@ -267,6 +276,55 @@ textarea {
   letter-spacing: 0.01em;
 }
 
+.site-header__actions {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.9rem, 2.2vw, 1.8rem);
+}
+
+/* Pastilles « édition » : beige & rouge / noir & rose (voir src/scripts/edition.ts). */
+.edition {
+  display: flex;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+.edition__swatch {
+  width: 1.05rem;
+  height: 1.05rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  outline: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  outline-offset: 0;
+  transition:
+    outline-offset 0.3s var(--ease-out),
+    transform 0.3s var(--ease-out);
+}
+
+.edition__swatch--classique {
+  background: linear-gradient(135deg, #f3e2c4 50%, #7a0a10 50%);
+}
+
+.edition__swatch--noir {
+  background: linear-gradient(135deg, #1c1719 50%, #f4ab9f 50%);
+}
+
+.edition__swatch:hover {
+  transform: scale(1.15);
+}
+
+.edition__swatch[aria-pressed='true'] {
+  outline: 1.5px solid currentColor;
+  outline-offset: 2.5px;
+}
+
+.edition__swatch:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+
 .site-header__cta {
   position: relative;
   padding-block: 0.35rem;
@@ -403,6 +461,15 @@ textarea {
   font-size: calc(clamp(5rem, 22vw, 24rem) * var(--display-scale));
   line-height: 0.8;
   letter-spacing: -0.02em;
+}
+
+/* Rideau du changement d'édition : nom de l'édition (« Noir & rose »), plus long que « Devis ». */
+.curtain--edition .curtain__word {
+  max-width: calc(100vw - 2 * var(--gutter));
+  font-size: calc(clamp(3.2rem, 12vw, 13rem) * var(--display-scale));
+  line-height: 0.9;
+  text-align: center;
+  text-wrap: balance;
 }
 
 /* ---------- Curseur « Tourner » ---------- */

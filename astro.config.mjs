@@ -1,9 +1,19 @@
 import { defineConfig, envField } from 'astro/config';
 import vercel from '@astrojs/vercel';
+import netlify from '@astrojs/netlify';
 import sitemap from '@astrojs/sitemap';
 
 // URL publique du site (canonical, Open Graph, sitemap). À définir au build : SITE_URL=https://mondomaine.fr
-const site = process.env.SITE_URL ?? 'https://redsea.example';
+const site = process.env.SITE_URL ?? process.env.URL ?? 'https://redsea.example';
+
+/*
+ * Hébergeur : Netlify ou Vercel, détecté automatiquement au build (chaque plateforme définit
+ * sa variable). Seule la route /api/devis devient une fonction serveur ; le reste est statique.
+ * En local, DEPLOY_TARGET=netlify ou =vercel force l'un ou l'autre (Vercel par défaut).
+ */
+const target =
+  process.env.DEPLOY_TARGET ?? (process.env.NETLIFY ? 'netlify' : process.env.VERCEL ? 'vercel' : 'vercel');
+const adapter = target === 'netlify' ? netlify() : vercel();
 
 /*
  * Palette du site, choisie au lancement :
@@ -31,7 +41,7 @@ export default defineConfig({
   site,
   // Tout est prérendu en statique ; seule /api/devis (prerender = false) part en fonction serveur.
   output: 'static',
-  adapter: vercel(),
+  adapter,
   integrations: [sitemap(), paletteBanner],
   build: {
     // Pas de <style> inline : la CSP n'autorise que 'self'.
