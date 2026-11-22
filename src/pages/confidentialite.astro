@@ -9,8 +9,8 @@ import { legal, rgpd, brand } from '../content/site';
 >
   <h2>Responsable du traitement</h2>
   <p>
-    Le responsable du traitement des données collectées sur ce site est {rgpd.controller}, {legal.editor.address}.
-    Contact : {rgpd.rightsEmail}.
+    Le responsable du traitement des données collectées sur ce site est {rgpd.controller},
+    SIREN {legal.editor.siren}, {legal.editor.address}. Contact : {rgpd.rightsEmail}.
   </p>
 
   <h2>Données collectées et origine</h2>
@@ -60,28 +60,30 @@ import { legal, rgpd, brand } from '../content/site';
     </thead>
     <tbody>
       <tr>
-        <td>{legal.host.name}</td>
+        <td>Netlify ({legal.host.name})</td>
         <td>Hébergement du site et exécution du formulaire</td>
-        <td>[À REMPLIR]</td>
+        <td>États-Unis</td>
       </tr>
       <tr>
-        <td>Resend (Resend, Inc.)</td>
+        <td>Resend (Plus Five Five, Inc.)</td>
         <td>Acheminement de l’email contenant votre demande</td>
-        <td>États-Unis [À VÉRIFIER]</td>
+        <td>États-Unis</td>
       </tr>
       <tr>
         <td>Cloudflare Turnstile (Cloudflare, Inc.)</td>
         <td>Vérification anti-robot du formulaire, sans cookie publicitaire</td>
-        <td>États-Unis [À VÉRIFIER]</td>
+        <td>États-Unis</td>
       </tr>
     </tbody>
   </table>
 
   <h2>Transferts hors Union européenne</h2>
   <p>
-    Certains de ces prestataires sont établis aux États-Unis. Les transferts sont encadrés par [À REMPLIR : décision
-    d’adéquation « Data Privacy Framework » et/ou clauses contractuelles types de la Commission européenne, selon les
-    contrats de chaque prestataire]. Vous pouvez en obtenir une copie en écrivant à {rgpd.rightsEmail}.
+    Ces prestataires sont établis aux États-Unis. Les trois sont certifiés au cadre de protection des données
+    UE–États-Unis (« EU-U.S. Data Privacy Framework »), reconnu par la décision d’adéquation de la Commission européenne
+    du 10 juillet 2023 : les transferts reposent sur cette décision (article 45 du RGPD), complétée le cas échéant par
+    les clauses contractuelles types de la Commission prévues dans leurs contrats. Pour toute question,
+    écrivez à {rgpd.rightsEmail}.
   </p>
 
   <h2>Durée de conservation</h2>

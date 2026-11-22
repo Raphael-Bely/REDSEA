@@ -94,11 +94,11 @@ export const quote = {
 /** Mention d'information RGPD de premier niveau, affichée sous le bouton du formulaire. */
 export const rgpd = {
   /**
-   * Responsable du traitement = celui qui collecte les demandes de devis et décide de leur usage,
-   * c'est-à-dire REDSEA. Son identité légale complète (nom, statut, adresse) figure dans les
-   * mentions légales (`legal.editor`), auxquelles la politique de confidentialité renvoie.
+   * Responsable du traitement = la personne juridique qui collecte les demandes de devis et décide
+   * de leur usage : l'entreprise individuelle qui édite le site (REDSEA n'est pas une société).
+   * Son identité complète figure dans les mentions légales (`legal.editor`).
    */
-  controller: 'REDSEA',
+  controller: 'Badra MOHAMED EI (REDSEA)',
   /** Adresse où écrire pour exercer ses droits (accès, rectification, effacement…). */
   rightsEmail: 'redseabissap@gmail.com',
   retention: '3 ans après le dernier contact',
@@ -106,22 +106,32 @@ export const rgpd = {
 
 /** Informations légales : pages /mentions-legales et /confidentialite. */
 export const legal = {
-  lastUpdate: '[date de dernière mise à jour — À REMPLIR]',
+  lastUpdate: '22 novembre 2026',
+  /**
+   * Source : annuaire-entreprises.data.gouv.fr (SIREN 131 465 403).
+   * Un entrepreneur individuel doit faire suivre son nom de « EI » sur ses documents professionnels
+   * (art. R. 526-26 du Code de commerce).
+   */
   editor: {
-    name: '[Nom ou raison sociale — À REMPLIR]',
-    status: '[Statut juridique (SAS, EI, micro-entreprise…) et capital social — À REMPLIR]',
-    siren: '[SIREN / numéro RCS — À REMPLIR]',
-    vat: '[N° de TVA intracommunautaire, si applicable — À REMPLIR]',
-    address: '[Adresse du siège — À REMPLIR]',
+    name: 'Badra MOHAMED EI',
+    status: 'Entrepreneur individuel — entreprise artisanale',
+    siren: '131 465 403',
+    siret: '131 465 403 00015 (siège)',
+    registry: 'Registre national des entreprises (RNE), tenu par l’INPI',
+    activity: 'Production de boissons rafraîchissantes (code NAF 11.07B)',
+    /** Vide : pas de numéro de TVA intracommunautaire, la ligne n'est pas affichée. */
+    vat: '',
+    address: '2 rue Beaubourg, 75004 Paris, France',
     email: 'redseabissap@gmail.com',
     phone: '[Téléphone — À REMPLIR]',
   },
-  publicationDirector: '[Nom du directeur ou de la directrice de la publication — À REMPLIR]',
+  publicationDirector: 'Badra MOHAMED',
   host: {
-    // À adapter à l'hébergeur réellement utilisé. Valeurs indicatives pour Vercel : à vérifier.
-    name: '[Nom de l’hébergeur — ex. Vercel Inc. — À REMPLIR]',
-    address: '[Adresse de l’hébergeur — À REMPLIR]',
-    phone: '[Téléphone de l’hébergeur — À REMPLIR]',
+    // Source : netlify.com/privacy (rubrique « Contact Us »). Netlify ne publie pas de téléphone.
+    name: 'Netlify, Inc.',
+    address: '101 2nd Street, San Francisco, CA 94105, États-Unis',
+    contact: 'support@netlify.com — www.netlify.com',
+    phone: '',
   },
   manufacturer: 'Brasserie Gasconha, Pessac (France)',
 } as const;

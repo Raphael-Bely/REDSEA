@@ -9,15 +9,28 @@ const { editor, host } = legal;
   description="Mentions légales du site REDSEA : éditeur, directeur de la publication, hébergeur."
 >
   <h2>Éditeur du site</h2>
+  <p>Le site {brand.name} est édité par :</p>
   <dl>
-    <dt>Nom / raison sociale</dt>
+    <dt>Nom</dt>
     <dd>{editor.name}</dd>
     <dt>Statut</dt>
     <dd>{editor.status}</dd>
-    <dt>SIREN / RCS</dt>
+    <dt>SIREN</dt>
     <dd>{editor.siren}</dd>
-    <dt>TVA intracommunautaire</dt>
-    <dd>{editor.vat}</dd>
+    <dt>SIRET</dt>
+    <dd>{editor.siret}</dd>
+    <dt>Immatriculation</dt>
+    <dd>{editor.registry}</dd>
+    <dt>Activité</dt>
+    <dd>{editor.activity}</dd>
+    {
+      editor.vat && (
+        <>
+          <dt>TVA intracommunautaire</dt>
+          <dd>{editor.vat}</dd>
+        </>
+      )
+    }
     <dt>Adresse</dt>
     <dd>{editor.address}</dd>
     <dt>Email</dt>
@@ -35,8 +48,16 @@ const { editor, host } = legal;
     <dd>{host.name}</dd>
     <dt>Adresse</dt>
     <dd>{host.address}</dd>
-    <dt>Téléphone</dt>
-    <dd>{host.phone}</dd>
+    <dt>Contact</dt>
+    <dd>{host.contact}</dd>
+    {
+      host.phone && (
+        <>
+          <dt>Téléphone</dt>
+          <dd>{host.phone}</dd>
+        </>
+      )
+    }
   </dl>
 
   <h2>Fabrication</h2>
@@ -44,10 +65,9 @@ const { editor, host } = legal;
 
   <h2>Propriété intellectuelle</h2>
   <p>
-    L’ensemble des éléments de ce site (textes, photographies, illustrations, logo, étiquette, marque {brand.name}) est
-    protégé par le droit de la propriété intellectuelle. Toute reproduction ou représentation, totale ou partielle, sans
-    autorisation écrite préalable est interdite. [À REMPLIR : préciser le titulaire des droits et, le cas échéant, le
-    numéro de dépôt de la marque à l’INPI.]
+    L’ensemble des éléments de ce site (textes, photographies, illustrations, logo, étiquette) est la propriété de
+    l’éditeur ou de ses partenaires et est protégé par le droit de la propriété intellectuelle. Toute reproduction ou
+    représentation, totale ou partielle, sans autorisation écrite préalable est interdite.
   </p>
 
   <h2>Données personnelles et cookies</h2>
