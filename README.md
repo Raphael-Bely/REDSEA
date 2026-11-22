@@ -82,13 +82,9 @@ Non décliné par édition pour l'instant : l'image de secours de la bouteille (
 
 ## 2. Ce qu'il reste à remplir
 
-Tout le contenu est centralisé dans **`src/content/site.ts`**. Chercher `À REMPLIR` :
+Tout le contenu est centralisé dans **`src/content/site.ts`**. Il ne reste plus de `À REMPLIR` dans les pages.
 
-| Où | Quoi |
-| --- | --- |
-| `legal.editor.phone` | téléphone de l'éditeur (obligatoire pour un entrepreneur individuel, loi LCEN art. 6) |
-
-Déjà rempli : textes « Qui sommes-nous » et « Ce qu'il y a dans la bouteille », email de contact et d'exercice des droits RGPD (`redseabissap@gmail.com`), destinataire des devis, éditeur (Badra MOHAMED EI, SIREN 131 465 403, RNE, source : annuaire-entreprises.data.gouv.fr), directeur de la publication, hébergeur (Netlify, Inc.), base des transferts hors UE (Data Privacy Framework : Netlify, Resend, Cloudflare). Si l'hébergeur change (Vercel…), mettre à jour `legal.host` et le tableau des sous-traitants de `confidentialite.astro`. Si la marque REDSEA est déposée à l'INPI, ajouter son numéro dans « Propriété intellectuelle ».
+Déjà rempli : textes « Qui sommes-nous » et « Ce qu'il y a dans la bouteille », email de contact et d'exercice des droits RGPD (`redseabissap@gmail.com`), destinataire des devis, éditeur (Badra MOHAMED EI, SIREN 131 465 403, RNE, téléphone, source : annuaire-entreprises.data.gouv.fr), directeur de la publication, hébergeur (Netlify, Inc.), base des transferts hors UE (Data Privacy Framework : Netlify, Resend, Cloudflare). Si l'hébergeur change (Vercel…), mettre à jour `legal.host` et le tableau des sous-traitants de `confidentialite.astro`. Si la marque REDSEA est déposée à l'INPI, ajouter son numéro dans « Propriété intellectuelle ».
 
 Faire relire les deux pages légales par un juriste avant mise en ligne : la structure est complète (articles 13–14 RGPD), mais le contenu dépend de votre situation.
 

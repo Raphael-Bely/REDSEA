@@ -123,7 +123,7 @@ export const legal = {
     vat: '',
     address: '2 rue Beaubourg, 75004 Paris, France',
     email: 'redseabissap@gmail.com',
-    phone: '[Téléphone — À REMPLIR]',
+    phone: '+33 7 69 63 47 95',
   },
   publicationDirector: 'Badra MOHAMED',
   host: {
