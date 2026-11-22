@@ -27,8 +27,10 @@ import { legal, rgpd, brand } from '../content/site';
   </ul>
   <p>
     Les champs marqués d’un astérisque sont nécessaires pour vous répondre ; sans eux, la demande ne peut pas être
-    traitée. Votre adresse IP est utilisée de façon transitoire, uniquement pour limiter les envois abusifs ; elle
-    n’est pas conservée avec votre demande.
+    traitée. Votre adresse IP est utilisée de façon transitoire pour limiter les envois abusifs et, avec des
+    informations techniques sur votre navigateur, pour la vérification anti-robot ; elle n’est pas conservée avec
+    votre demande. Comme tout hébergeur, Netlify enregistre par ailleurs des journaux techniques de connexion (adresse
+    IP, date, page demandée), nécessaires au fonctionnement et à la sécurité du site.
   </p>
 
   <h2>Finalités et bases légales</h2>
@@ -45,6 +47,10 @@ import { legal, rgpd, brand } from '../content/site';
         <td>Protéger le formulaire contre les envois automatisés (anti-robot, limitation de débit)</td>
         <td>Intérêt légitime : sécurité du site (article 6.1.f du RGPD)</td>
       </tr>
+      <tr>
+        <td>Assurer le fonctionnement et la sécurité technique du site (journaux de connexion de l’hébergeur)</td>
+        <td>Intérêt légitime : sécurité du site (article 6.1.f du RGPD)</td>
+      </tr>
     </tbody>
   </table>
   <p>Aucune décision automatisée ni profilage n’est réalisé. Vos données ne sont ni vendues ni utilisées à des fins publicitaires.</p>
@@ -52,7 +58,7 @@ import { legal, rgpd, brand } from '../content/site';
   <h2>Destinataires et sous-traitants</h2>
   <p>
     Vos données sont destinées aux seules personnes chargées de répondre aux demandes de devis chez {brand.name}. Elles
-    transitent par les prestataires techniques suivants, agissant en qualité de sous-traitants :
+    transitent par les prestataires techniques suivants, qui les traitent pour notre compte :
   </p>
   <table class="legal__table">
     <thead>
@@ -74,13 +80,26 @@ import { legal, rgpd, brand } from '../content/site';
         <td>Vérification anti-robot du formulaire, sans cookie publicitaire</td>
         <td>États-Unis</td>
       </tr>
+      <tr>
+        <td>Gmail (Google Ireland Limited, Google LLC)</td>
+        <td>Messagerie où les demandes de devis sont reçues et conservées</td>
+        <td>Union européenne et États-Unis</td>
+      </tr>
     </tbody>
   </table>
+  <p>
+    Pour la vérification anti-robot, Cloudflare analyse des signaux techniques (adresse IP, empreinte de connexion,
+    type de navigateur). Cloudflare utilise également ces signaux pour son propre compte, afin d’améliorer sa détection
+    des robots : ce traitement relève de sa
+    propre <a href="https://www.cloudflare.com/turnstile-privacy-policy/" rel="noopener noreferrer"
+      >politique de confidentialité Turnstile</a
+    >.
+  </p>
 
   <h2>Transferts hors Union européenne</h2>
   <p>
-    Ces prestataires sont établis aux États-Unis. Les trois sont certifiés au cadre de protection des données
-    UE–États-Unis (« EU-U.S. Data Privacy Framework »), reconnu par la décision d’adéquation de la Commission européenne
+    Netlify, Resend et Cloudflare sont établis aux États-Unis, et Google peut y transférer des données. Ces sociétés
+    sont certifiées au cadre de protection des données UE–États-Unis (« EU-U.S. Data Privacy Framework »), reconnu par la décision d’adéquation de la Commission européenne
     du 10 juillet 2023 : les transferts reposent sur cette décision (article 45 du RGPD), complétée le cas échéant par
     les clauses contractuelles types de la Commission prévues dans leurs contrats. Pour toute question,
     écrivez à {rgpd.rightsEmail}.
@@ -90,7 +109,7 @@ import { legal, rgpd, brand } from '../content/site';
   <p>
     Les données liées à une demande de devis sont conservées {rgpd.retention} avec vous, puis supprimées. Si la demande
     aboutit à une relation commerciale, les documents contractuels et comptables sont conservés pendant les durées
-    légales applicables.
+    légales applicables. Resend conserve une copie technique de l’email d’envoi pendant 30 jours au plus.
   </p>
 
   <h2>Vos droits</h2>
@@ -118,10 +137,12 @@ import { legal, rgpd, brand } from '../content/site';
 
   <h2>Cookies et traceurs</h2>
   <p>
-    Ce site ne dépose aucun cookie ni traceur tiers : pas d’outil publicitaire, pas de réseau social embarqué, pas de
-    polices chargées depuis un service externe. Le contrôle anti-robot Cloudflare Turnstile n’est chargé que lorsque
-    vous arrivez sur le formulaire ; il est strictement nécessaire à la sécurité de l’envoi. Aucun bandeau de
-    consentement n’est donc requis.
+    Ce site ne dépose aucun cookie publicitaire ni de mesure d’audience : pas d’outil publicitaire, pas de réseau
+    social embarqué, pas de polices chargées depuis un service externe. Seuls deux traceurs strictement nécessaires
+    sont utilisés : la mémorisation, le temps de votre visite, de l’édition de couleurs que vous avez choisie
+    (stockage de session du navigateur, effacé à la fermeture de l’onglet), et le contrôle anti-robot Cloudflare
+    Turnstile, chargé seulement lorsque vous arrivez sur le formulaire et nécessaire à la sécurité de l’envoi. Ces
+    traceurs sont dispensés de consentement : aucun bandeau n’est donc requis.
   </p>
 
   <h2>Sécurité</h2>

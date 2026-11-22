@@ -179,7 +179,7 @@ src/
   styles/fonts.css           ← polices, déclarées à un seul endroit
   styles/global.css, home.css
   layouts/Base.astro, Legal.astro
-  pages/index.astro, mentions-legales.astro, confidentialite.astro, robots.txt.ts
+  pages/index.astro, mentions-legales.astro, confidentialite.astro, 404.astro, robots.txt.ts
   pages/api/devis.ts         ← seule route serveur
   components/QuoteForm.astro
   scripts/main.ts            loader, scroll, animations, montage de la bouteille

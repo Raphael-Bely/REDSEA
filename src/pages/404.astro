@@ -1,0 +1,21 @@
+---
+import Base from '../layouts/Base.astro';
+import { nav } from '../content/site';
+---
+
+<Base
+  title="Page introuvable — REDSEA"
+  description="Cette page n’existe pas ou a été déplacée."
+  headerTheme="light"
+  staticHeader
+  noindex
+>
+  <article class="legal">
+    <h1 class="legal__title display">Page introuvable</h1>
+    <p class="legal__update label">Erreur 404</p>
+    <div class="legal__body">
+      <p>Cette page n’existe pas ou a été déplacée.</p>
+      <p><a href="/">Retour à l’accueil</a> · <a href="/#devis">{nav.quoteLabel}</a></p>
+    </div>
+  </article>
+</Base>
