@@ -181,6 +181,14 @@ const intro = { y: reducedMotion ? 0 : -1.05, spin: reducedMotion ? 0 : -1.5 };
 const backdrop = { mix: 0 };
 /** Bouteille 3D affichée : reconstruite avec l'autre étiquette quand l'édition change. */
 let bottleStage: { rebuild(): Promise<void> } | null = null;
+/**
+ * Curseurs de la scène « nuit », séparés de `pose` : chaque valeur n'est animée que par UNE timeline.
+ * Deux timelines liées au scroll qui écrivent la même propriété se marchent dessus quand on défile
+ * vite (chacune rattrape son retard de son côté) et laissent parfois un état faux.
+ * slide : 0 → 1, la bouteille glisse au centre · night : 0 → 1, cadrage et sol du simulateur ·
+ * out : 0 → 1, sortie par le bas avant le devis.
+ */
+const nightMix = { slide: 0, night: 0, out: 0 };
 
 /** Vrai tant que les scènes fixes sont à l'écran (faux une fois le devis déroulé par-dessus). */
 let scenesOnScreen = true;
@@ -230,8 +238,12 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
   let running = false;
   let lastRect = '';
   gsap.ticker.add(() => {
-    const y = pose.y + intro.y;
-    const visible = scenesOnScreen && !document.hidden && Math.abs(pose.x) < 0.82 && Math.abs(y) < 1.3;
+    // La nuit a ses propres curseurs (nightMix) : elle ramène la bouteille au centre quelle que soit la
+    // pose laissée par les scènes précédentes, puis la fait sortir par le bas.
+    const slide = nightMix.slide;
+    const x = pose.x * (1 - slide);
+    const y = pose.y * (1 - slide) + intro.y - 1.4 * nightMix.out;
+    const visible = scenesOnScreen && !document.hidden && Math.abs(x) < 0.82 && Math.abs(y) < 1.3;
     if (visible !== running) {
       running = visible;
       // Rendu arrêté = le canvas garderait sa dernière image (bouteille figée au milieu de
@@ -247,7 +259,10 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
     }
     if (!visible) return;
     Object.assign(bottle.pose, pose);
+    bottle.pose.x = x;
     bottle.pose.y = y;
+    bottle.pose.scale = pose.scale + (1 - pose.scale) * slide;
+    bottle.pose.night = nightMix.night;
     bottle.pose.spin = pose.spin + intro.spin;
     const m = backdrop.mix;
     bottle.setBackdrop(CREAM.r + (RED.r - CREAM.r) * m, CREAM.g + (RED.g - CREAM.g) * m, CREAM.b + (RED.b - CREAM.b) * m);
@@ -677,7 +692,16 @@ function setupScenes({ fallback }: SceneOptions) {
       1.3,
     );
     heroTl.to(backdrop, { mix: 1, duration: 0.35 }, 1.45);
-    heroTl.fromTo(aboutFront, { opacity: 0 }, { opacity: 1, duration: 0.3 }, 1.85);
+    // Le texte « Qui sommes-nous » apparaît à la fin du hero et s'efface à la fin de sa propre scène :
+    // deux timelines. Chacune anime son curseur, et l'opacité réelle en est le produit, recalculé à
+    // chaque image. (Avant, les deux écrivaient `opacity` : en défilant vite, le texte restait parfois
+    // affiché par-dessus le hero.)
+    const aboutVis = { in: 0, out: 0 };
+    const applyAboutVis = () => {
+      if (aboutFront) aboutFront.style.opacity = String(aboutVis.in * (1 - aboutVis.out));
+    };
+    gsap.ticker.add(applyAboutVis);
+    heroTl.fromTo(aboutVis, { in: 0 }, { in: 1, duration: 0.3 }, 1.85);
     heroTl.set({}, {}, SCENE_LENGTH.hero);
 
     /* ------------------------- Scène 2 : qui sommes-nous ------------------------- */
@@ -696,7 +720,8 @@ function setupScenes({ fallback }: SceneOptions) {
     if (!compact) aboutTl.to(pose, { spin: Math.PI * 2 + 3, tiltZ: -0.04, duration: SCENE_LENGTH.about }, 0);
 
     // Sortie : le texte s'efface vers le haut, le fond crème arrive par la droite.
-    aboutTl.to(aboutFront, { opacity: 0, y: () => -vh() * 0.08, duration: 0.4, ease: 'power2.in' }, 1.6);
+    aboutTl.to(aboutVis, { out: 1, duration: 0.4, ease: 'power2.in' }, 1.6);
+    aboutTl.to(aboutFront, { y: () => -vh() * 0.08, duration: 0.4, ease: 'power2.in' }, 1.6);
     // Le texte des arguments est découpé avec son fond : en remontant, il disparaît avec lui
     // au lieu de traîner par-dessus la scène précédente.
     aboutTl.fromTo(
@@ -761,14 +786,14 @@ function setupScenes({ fallback }: SceneOptions) {
         { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.7, ease: 'power2.inOut' },
         1.05,
       );
-      argsTl.to(pose, { x: 0, y: 0, scale: 1, tiltZ: 0, duration: 0.8, ease: 'power2.inOut' }, 1.05);
-      argsTl.to(pose, { night: 1, duration: 0.6, ease: 'sine.inOut' }, 1.36);
+      argsTl.to(nightMix, { slide: 1, duration: 0.8, ease: 'power2.inOut' }, 1.05);
+      argsTl.to(nightMix, { night: 1, duration: 0.6, ease: 'sine.inOut' }, 1.36);
 
       /* ------------------------- Scène 4 : nuit (simulateur) ------------------------ */
       const nightTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: scrollTrigger(night) });
       // Près de deux écrans pour jouer avec la bouteille, sans aucun texte. Le devis s'ouvre pendant le
       // dernier écran de la scène : la bouteille sort par le bas pendant l'ouverture.
-      nightTl.to(pose, { y: -1.4, duration: 0.5, ease: 'power2.in' }, 1.9);
+      nightTl.to(nightMix, { out: 1, duration: 0.5, ease: 'power2.in' }, 1.9);
       nightTl.set({}, {}, SCENE_LENGTH.night);
     } else {
       // … et, sans la nuit (image de secours), la bouteille quitte l'écran par le bas.
@@ -809,6 +834,8 @@ function setupScenes({ fallback }: SceneOptions) {
     return () => {
       // Changement de mise en page (bureau ↔ mobile) : GSAP annule les timelines, on remet la pose à zéro.
       Object.assign(pose, { spin: 0, x: 0, y: 0, scale: 1, tiltX: 0.1, tiltZ: 0, night: 0 });
+      Object.assign(nightMix, { slide: 0, night: 0, out: 0 });
+      gsap.ticker.remove(applyAboutVis);
       backdrop.mix = 0;
     };
   });
