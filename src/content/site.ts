@@ -42,9 +42,17 @@ export const hero = {
 
 export const about = {
   label: 'Qui sommes-nous',
-  /** Environ 80 mots : le texte est ajusté automatiquement pour remplir l'écran. */
-  text:
-    'Derrière REDSEA, nous sommes cinq étudiants à Bordeaux, avec une envie simple : servir le bissap comme on le boit à Dakar. Des fleurs d’hibiscus du Sénégal et une recette travaillée et retravaillée par nos soins pour atteindre le mix parfait, puis brassée à la Brasserie Gasconha, à Pessac. Une boisson rouge profond, servie fraîche, pensée pour les comptoirs, les terrasses et les cartes qui cherchent autre chose qu’un soda.',
+  /**
+   * Un paragraphe par entrée. Le texte est ajusté automatiquement pour tenir dans l'écran : plus il
+   * est long, plus il est petit (environ 190 mots ici).
+   */
+  paragraphs: [
+    'RedSea est née d’une rencontre. Un Égyptien, un Sénégalais, une école d’ingénieur à Bordeaux et une découverte : le karkadé que défendait l’un et le bissap que défendait l’autre étaient, au fond, la même boisson. La même fleur d’hibiscus, célébrée par deux cultures qui s’ignoraient.',
+    'Testée auprès de dizaines d’étudiants et validée à l’unanimité, l’idée a rassemblé cinq étudiants ingénieurs autour d’un même projet : faire découvrir cette boisson venue d’Afrique à Bordeaux, puis au-delà.',
+    'Nous avons retravaillé la recette pour une version moins sucrée et plus douce, sans jamais sacrifier le caractère de l’hibiscus. Nos fleurs proviennent d’une agriculture biologique et équitable, où la juste rémunération des producteurs n’est pas un argument marketing mais un engagement : un salaire décent, versé de manière éthique à l’agriculteur.',
+    'Côté production, nous avons choisi la proximité et le savoir-faire : notre fournisseur est bordelais, et chaque bouteille est brassée à la Brasserie Gasconha, à Pessac. De la fleur à la bouteille, RedSea est une boisson locale, naturelle et responsable.',
+    'Une rencontre, une fleur, cinq copains et l’envie de la partager avec le monde entier.',
+  ],
   signature: 'L’équipe REDSEA',
 } as const;
 

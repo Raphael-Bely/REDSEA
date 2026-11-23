@@ -371,6 +371,10 @@ html.has-scenes .hero {
   text-wrap: pretty;
 }
 
+.about__para + .about__para {
+  margin-top: 0.6em;
+}
+
 .about__word {
   display: inline-block;
   will-change: opacity, transform;

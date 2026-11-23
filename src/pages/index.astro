@@ -6,7 +6,7 @@ import bottleCutout from '../assets/bottle-cutout.png';
 import '../styles/home.css';
 import { brand, hero, about, argumentsSection, night, quote } from '../content/site';
 
-const aboutWords = about.text.split(/\s+/).filter(Boolean);
+const aboutParagraphs = about.paragraphs.map((paragraph) => paragraph.split(/\s+/).filter(Boolean));
 const pad = (n: number) => String(n).padStart(2, '0');
 ---
 
@@ -108,17 +108,21 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
       <div class="scene__front about__front" data-about-front>
         <h2 class="about__label label" id="about-label" data-about-label>{about.label}</h2>
-        <p class="about__text" data-about-text>
+        <div class="about__text" data-about-text>
           {
-            aboutWords.map((word) => (
-              <>
-                <span class="about__word" data-word>
-                  {word}
-                </span>{' '}
-              </>
+            aboutParagraphs.map((words) => (
+              <p class="about__para">
+                {words.map((word) => (
+                  <>
+                    <span class="about__word" data-word>
+                      {word}
+                    </span>{' '}
+                  </>
+                ))}
+              </p>
             ))
           }
-        </p>
+        </div>
         <p class="about__signature label" data-about-signature>{about.signature}</p>
       </div>
     </section>
