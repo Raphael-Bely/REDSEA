@@ -210,6 +210,11 @@ html.has-scenes .hero {
 
 .hero__letter {
   display: inline-block;
+  /* Les capitales du lettrage montent à 0,88 em, plus haut que la boîte de la lettre (interligne 0,8) :
+     sans cette marge intérieure, le motif à facettes ne peint pas le haut des lettres, qui paraît
+     tranché net. La marge négative annule l'effet sur la mise en page. */
+  padding-block: 0.12em 0.04em;
+  margin-block: -0.12em -0.04em;
   will-change: transform;
 }
 
