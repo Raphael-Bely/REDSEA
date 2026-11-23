@@ -175,16 +175,32 @@ html.has-scenes .hero {
   display: grid;
   place-items: center;
   font-family: 'Redsea Lettering', var(--font-display);
-  font-size: calc(21.4vw * var(--display-scale));
+  /* Lettrage de l'étiquette : RED et SEA de part et d'autre de la bouteille, qui garde sa place au milieu
+     (--hero-gap ≈ sa largeur). REDSEA = 4,28 em : la taille est bornée pour que le titre tienne toujours
+     dans la largeur, espace compris. */
+  --hero-gap: 27svh;
+  font-size: calc(min(18.6vw, (92vw - var(--hero-gap)) / 4.28) * var(--display-scale));
   line-height: 0.8;
   user-select: none;
 }
 
 .hero__title-inner {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
   white-space: nowrap;
-  /* Décalage optique : le titre n'est pas centré, il tire vers le haut-gauche. */
-  translate: -0.6vw -3svh;
+  /* Décalage optique : le titre tire un peu vers le haut. */
+  translate: 0 -3svh;
+}
+
+.hero__part:first-child {
+  justify-self: end;
+  margin-right: calc(var(--hero-gap) / 2);
+}
+
+.hero__part:last-child {
+  justify-self: start;
+  margin-left: calc(var(--hero-gap) / 2);
 }
 
 .hero__part {
@@ -275,12 +291,13 @@ html.has-scenes .hero {
 }
 
 @media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
-  .hero__title {
-    font-size: calc(42vw * var(--display-scale));
+  .hero__title.display {
+    font-size: calc(37vw * var(--display-scale));
     line-height: 0.82;
   }
 
   .hero__title-inner {
+    display: flex;
     flex-direction: column;
     width: 100%;
     padding-inline: calc(var(--gutter) * 0.6);
@@ -289,10 +306,12 @@ html.has-scenes .hero {
 
   .hero__part:first-child {
     align-self: flex-start;
+    margin-right: 0;
   }
 
   .hero__part:last-child {
     align-self: flex-end;
+    margin-left: 0;
   }
 
   /* Le kicker reste dans la marge gauche, sans passer sur la capsule. */
@@ -1037,118 +1056,8 @@ html.has-scenes .site-footer {
    ========================================================================== */
 .night {
   display: none;
-  color: #f3e2c4;
 }
 
 .night__bg {
   background: #000;
-}
-
-.night__front {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: clamp(1.25rem, 3svh, 2.25rem);
-  padding: clamp(5rem, 13svh, 8rem) var(--gutter) clamp(2.5rem, 8svh, 5rem);
-  visibility: hidden;
-}
-
-.night__text {
-  max-width: min(30vw, 26rem);
-}
-
-.night__label {
-  color: #c9a45c;
-  margin-bottom: 0.9rem;
-}
-
-.night__title {
-  font-size: clamp(2.4rem, 5.2vw, 5rem);
-  line-height: 0.95;
-  text-wrap: balance;
-}
-
-.night__hint {
-  margin-top: 1.1rem;
-  color: rgba(243, 226, 196, 0.78);
-  line-height: 1.5;
-  text-wrap: pretty;
-}
-
-.night__keys {
-  margin-top: 0.7rem;
-  font-size: var(--fs-small);
-  color: rgba(243, 226, 196, 0.5);
-}
-
-.night__tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  pointer-events: auto;
-  align-self: flex-start;
-}
-
-.night__btn {
-  font: inherit;
-  font-size: var(--fs-small);
-  font-weight: 600;
-  color: #f3e2c4;
-  background: rgba(28, 23, 25, 0.85);
-  border: 1px solid rgba(243, 226, 196, 0.22);
-  border-radius: 999px;
-  padding: 0.55rem 1rem;
-  min-height: 2.75rem;
-  cursor: pointer;
-  transition:
-    background-color 0.2s,
-    border-color 0.2s,
-    color 0.2s;
-}
-
-.night__btn:hover {
-  border-color: rgba(243, 226, 196, 0.55);
-}
-
-.night__btn:focus-visible {
-  outline: 2px solid #c9a45c;
-  outline-offset: 3px;
-}
-
-.night__btn[aria-pressed='true'] {
-  background: #c9a45c;
-  border-color: #c9a45c;
-  color: #141012;
-}
-
-@media (pointer: coarse) {
-  .night__keys {
-    display: none;
-  }
-}
-
-/* Téléphone : le texte en haut, la bouteille au milieu, les boutons en bas. */
-@media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
-  .night__front {
-    justify-content: space-between;
-    padding-top: clamp(4.5rem, 11svh, 6rem);
-    padding-bottom: clamp(1.5rem, 5svh, 3rem);
-  }
-
-  .night__text {
-    max-width: none;
-  }
-
-  .night__title {
-    font-size: clamp(2rem, 9vw, 3rem);
-  }
-
-  .night__hint {
-    margin-top: 0.6rem;
-    font-size: var(--fs-small);
-  }
-
-  .night__tools {
-    align-self: center;
-  }
 }

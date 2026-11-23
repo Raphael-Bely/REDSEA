@@ -181,10 +181,7 @@ const intro = { y: reducedMotion ? 0 : -1.05, spin: reducedMotion ? 0 : -1.5 };
 const backdrop = { mix: 0 };
 /** Bouteille 3D affichée : reconstruite avec l'autre étiquette quand l'édition change. */
 let bottleStage: { rebuild(): Promise<void> } | null = null;
-/** Bouteille 3D en cours (pour les boutons de la scène « nuit »). */
-let liveBottle: (() => BottleController) | null = null;
-/** Bouton « Faire tourner » de la nuit : repris par la nouvelle bouteille après un changement d'édition. */
-let nightSpinning = false;
+
 /** Vrai tant que les scènes fixes sont à l'écran (faux une fois le devis déroulé par-dessus). */
 let scenesOnScreen = true;
 
@@ -284,7 +281,6 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
       bottle.dispose();
       canvas.remove();
       bottle = next;
-      bottle.setSpinning(nightSpinning);
       canvas = fresh;
       canvas.classList.add('is-ready');
       running = false;
@@ -292,7 +288,6 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
     },
   };
 
-  liveBottle = () => bottle;
   bindBottleInteractions(hit, () => bottle);
   return bottle;
 }
@@ -556,17 +551,6 @@ function setupScenes({ fallback }: SceneOptions) {
   // La nuit (simulateur complet) n'existe qu'avec la bouteille 3D.
   const night = fallback ? null : $('[data-scene="night"]');
   const nightBg = night ? $('[data-scene-bg]', night) : null;
-  const nightFront = night ? $('[data-night-front]', night) : null;
-  if (night) {
-    const spinButton = $<HTMLButtonElement>('[data-night-spin]', night);
-    spinButton?.addEventListener('click', () => {
-      nightSpinning = !nightSpinning;
-      spinButton.setAttribute('aria-pressed', String(nightSpinning));
-      liveBottle?.().setSpinning(nightSpinning);
-    });
-    $('[data-night-reset]', night)?.addEventListener('click', () => liveBottle?.().recenter());
-  }
-
   const items = $$('[data-arg]', args);
 
   const parts = $$('[data-hero-part]', hero);
@@ -634,8 +618,10 @@ function setupScenes({ fallback }: SceneOptions) {
       heroTl.to(parts[0], { yPercent: -34, xPercent: -6, duration: 1, ease: 'power2.inOut' }, 0);
       heroTl.to(parts[1], { yPercent: 34, xPercent: 6, duration: 1, ease: 'power2.inOut' }, 0);
     } else {
-      heroTl.to(parts[0], { x: () => -vw() * 0.115, duration: 1, ease: 'power2.inOut' }, 0);
-      heroTl.to(parts[1], { x: () => vw() * 0.115, duration: 1, ease: 'power2.inOut' }, 0);
+      // Au repos, le titre laisse déjà la place de la bouteille entre RED et SEA (home.css) : il ne
+      // s'écarte qu'un peu, le temps qu'elle grossisse, sans sortir de l'écran.
+      heroTl.to(parts[0], { x: () => -vh() * 0.02, duration: 1, ease: 'power2.inOut' }, 0);
+      heroTl.to(parts[1], { x: () => vh() * 0.02, duration: 1, ease: 'power2.inOut' }, 0);
     }
     letters.forEach((letter, i) => {
       const amount = compact ? 0.45 : 1;
@@ -766,7 +752,7 @@ function setupScenes({ fallback }: SceneOptions) {
     if (!compact) argsTl.to(pose, { spin: Math.PI * 4, duration: 0.95, ease: 'power1.inOut' }, 0);
     // Sortie : le texte s'efface…
     argsTl.to(argsLayers, { opacity: 0, y: () => -vh() * 0.06, duration: 0.3, ease: 'power1.in' }, 1);
-    if (night && nightBg && nightFront) {
+    if (night && nightBg) {
       // … puis la nuit tombe : le noir monte du bas de l'écran, la bouteille déjà là glisse au centre
       // et se recadre comme dans le simulateur, le sol d'eau apparaît sous elle.
       argsTl.fromTo(
@@ -780,11 +766,8 @@ function setupScenes({ fallback }: SceneOptions) {
 
       /* ------------------------- Scène 4 : nuit (simulateur) ------------------------ */
       const nightTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: scrollTrigger(night) });
-      gsap.set(nightFront, { autoAlpha: 0, y: 18 });
-      nightTl.to(nightFront, { autoAlpha: 1, y: 0, duration: 0.25, ease: 'power2.out' }, 0);
-      // Près de deux écrans pour jouer avec la bouteille. Le devis s'ouvre pendant le dernier écran
-      // de la scène : le texte s'efface juste avant, la bouteille sort par le bas pendant l'ouverture.
-      nightTl.to(nightFront, { autoAlpha: 0, y: -18, duration: 0.22, ease: 'power1.in' }, 1.74);
+      // Près de deux écrans pour jouer avec la bouteille, sans aucun texte. Le devis s'ouvre pendant le
+      // dernier écran de la scène : la bouteille sort par le bas pendant l'ouverture.
       nightTl.to(pose, { y: -1.4, duration: 0.5, ease: 'power2.in' }, 1.9);
       nightTl.set({}, {}, SCENE_LENGTH.night);
     } else {

@@ -57,12 +57,8 @@ export type Argument = {
 
 /** Scène « nuit » : le simulateur complet, juste avant le devis. */
 export const night = {
-  label: 'La bouteille, en vrai',
-  title: 'Prenez-la en main.',
-  hint: 'Glissez pour la tourner dans tous les sens. Secouez-la : le bissap, la buée et les gouttes réagissent.',
-  hintKeys: 'Clic droit : déplacer · Ctrl + molette ou pincement : zoomer',
-  spin: 'Faire tourner',
-  reset: 'Recentrer',
+  /** Nom de la section pour les lecteurs d'écran (rien n'est affiché). */
+  label: 'La bouteille en 3D, à manipuler',
 };
 
 export const argumentsSection = {

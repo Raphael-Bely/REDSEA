@@ -173,22 +173,10 @@ const pad = (n: number) => String(n).padStart(2, '0');
     <!--
       Affichée seulement avec la bouteille 3D (voir home.css). Le fond passe au noir, la bouteille
       déjà à l'écran glisse au centre, le sol d'eau apparaît : c'est le simulateur complet, la
-      bouteille se manipule dans tous les sens.
+      bouteille tourne sur elle-même et se manipule dans tous les sens. Aucun texte par-dessus.
     -->
-    <section class="scene night" data-scene="night" data-theme-zone="dark" aria-labelledby="night-title">
+    <section class="scene night" data-scene="night" data-theme-zone="dark" aria-label={night.label}>
       <div class="scene__bg night__bg" data-scene-bg></div>
-      <div class="scene__front night__front" data-night-front>
-        <div class="night__text">
-          <p class="night__label label">{night.label}</p>
-          <h2 class="night__title display" id="night-title">{night.title}</h2>
-          <p class="night__hint">{night.hint}</p>
-          <p class="night__keys">{night.hintKeys}</p>
-        </div>
-        <div class="night__tools">
-          <button type="button" class="night__btn" data-night-spin aria-pressed="false">{night.spin}</button>
-          <button type="button" class="night__btn" data-night-reset>{night.reset}</button>
-        </div>
-      </div>
     </section>
   </div>
 

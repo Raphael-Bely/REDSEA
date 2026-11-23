@@ -99,8 +99,6 @@ export interface BottleController {
   freeZoom(factor: number, x?: number, y?: number): void;
   /** Impulsion de rotation autour d'un axe de l'écran (clavier). */
   freeKick(x: number, y: number, z: number): void;
-  /** Rotation automatique sur l'axe de la bouteille. */
-  setSpinning(on: boolean): void;
   /** Bouteille redressée, recentrée, liquide au repos. */
   recenter(): void;
   dispose(): void;
@@ -158,6 +156,8 @@ function createCaustic(): Mesh {
 
 /** Vitesse de la rotation idle (rad/s) : un tour en ~15 s. */
 const IDLE_SPEED = 0.42;
+/** Rotation permanente de la bouteille dans la scène « nuit » (rad/s), comme le « Faire tourner » du simulateur. */
+const NIGHT_SPIN = 0.5;
 /** Légère plongée de la caméra (radians) : laisse voir le dessus de la capsule. */
 const CAMERA_PITCH = 0.085;
 /** Cadrage du simulateur (la nuit) : objectif, plongée, distance et point visé. */
@@ -219,12 +219,14 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
     cssHeight = Math.max(1, canvas.clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPixelRatio));
     emu.resize(cssWidth, cssHeight);
-    const tan = Math.tan((camera.fov * Math.PI) / 360);
+    // Toujours l'objectif de jour : un redimensionnement pendant la nuit (objectif plus large) ne doit pas
+    // fausser la taille de la bouteille dans le reste de la page.
+    const tan = Math.tan((DAY_FOV * Math.PI) / 360);
     // La bouteille occupe au plus 86 % de la hauteur et 46 % de la largeur du viewport.
     const distH = HEIGHT / (0.86 * 2 * tan);
     const distW = (emu.R * 2) / (0.46 * 2 * tan * camera.aspect);
     baseDist = Math.max(distH, distW);
-    const tall = camera.aspect < 0.8;
+    const tall = camera.aspect < 1.1 || cssWidth <= 760;
     nightDist0 = tall ? 880 : NIGHT_DIST;
     LOOK0.y = tall ? 36 : NIGHT_LOOK_Y;
   };
@@ -235,7 +237,6 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
   let nightDist = nightDist0;
   let nightK = 0;
   let free = false;
-  let spinning = false;
   let dist = baseDist;
   const freeQ = new Quaternion();
   const yawQ = new Quaternion();
@@ -363,7 +364,6 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
           angVel.multiplyScalar(Math.exp(-dt * 2.4));
         }
       }
-      if (spinning) userRot += dt * 0.5;
       lastActive = now;
     } else {
       // Hors de la nuit : la bouteille se redresse et revient au centre, le cadrage libre est oublié.
@@ -379,7 +379,10 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
     // Dès qu'on scrolle ou qu'on la saisit, elle finit son tour jusqu'au multiple de 2π le plus proche.
     const idleTarget = !free && n < 0.5 && !dragging && now - lastActive > 1500 ? 1 : 0;
     idleBlend += (idleTarget - idleBlend) * Math.min(1, dt * (idleTarget ? 0.9 : 3));
-    if (idleTarget) {
+    if (nightK > 0) {
+      // La nuit, elle ne s'arrête jamais : elle tourne sur son propre axe, même pendant qu'on la manipule.
+      idleRot += NIGHT_SPIN * nightK * dt;
+    } else if (idleTarget) {
       idleRot += IDLE_SPEED * idleBlend * dt;
     } else {
       const rest = Math.round(idleRot / (Math.PI * 2)) * Math.PI * 2;
@@ -572,9 +575,6 @@ export async function createBottle(options: BottleOptions): Promise<BottleContro
     },
     freeKick(x, y, z) {
       if (free) angVel.addScaledVector(va.set(x, y, z).applyQuaternion(camera.quaternion), 1.6);
-    },
-    setSpinning(on) {
-      spinning = on;
     },
     recenter() {
       freeQ.identity();
