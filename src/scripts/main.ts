@@ -2,7 +2,8 @@
  * Orchestration de la page d'accueil : loader, smooth scroll, scènes pilotées
  * par le scroll, bouteille 3D (chargée à la demande) et formulaire de devis.
  *
- * Principe des scènes : la page ne « défile » pas. Les trois premières sections
+ * Principe des scènes : la page ne « défile » pas. Les premières sections (dont la « nuit »,
+ * le simulateur complet de la bouteille)
  * sont des calques fixes ; le scroll ne fait qu'avancer des timelines qui
  * déplacent les éléments (titre, textes, fonds, bouteille). Seul le formulaire
  * de devis, plus haut que l'écran, défile normalement une fois révélé.
@@ -40,7 +41,7 @@ function bottleTextures() {
  * déclarées dans home.css (html.has-scenes .hero / .about). La scène des arguments dure
  * « nombre d'arguments + 1 » écrans. Dans les timelines, 1 unité de temps = 1 écran de scroll.
  */
-const SCENE_LENGTH = { hero: 2.2, about: 2.4 } as const;
+const SCENE_LENGTH = { hero: 2.2, about: 2.4, night: 3 } as const;
 const SCRUB = 0.5;
 
 /**
@@ -171,7 +172,7 @@ function setupLoader() {
 /* Bouteille                                                                  */
 /* -------------------------------------------------------------------------- */
 /** Pose pilotée par le scroll (même forme que BottlePose) + offsets de l'intro. */
-const pose = { spin: 0, x: 0, y: 0, scale: 1, tiltX: 0.1, tiltZ: 0 };
+const pose = { spin: 0, x: 0, y: 0, scale: 1, tiltX: 0.1, tiltZ: 0, night: 0 };
 const intro = { y: reducedMotion ? 0 : -1.05, spin: reducedMotion ? 0 : -1.5 };
 /**
  * Fond réfracté par le verre : suit la couleur de la scène en cours. Mélange (0 = crème,
@@ -180,6 +181,10 @@ const intro = { y: reducedMotion ? 0 : -1.05, spin: reducedMotion ? 0 : -1.5 };
 const backdrop = { mix: 0 };
 /** Bouteille 3D affichée : reconstruite avec l'autre étiquette quand l'édition change. */
 let bottleStage: { rebuild(): Promise<void> } | null = null;
+/** Bouteille 3D en cours (pour les boutons de la scène « nuit »). */
+let liveBottle: (() => BottleController) | null = null;
+/** Bouton « Faire tourner » de la nuit : repris par la nouvelle bouteille après un changement d'édition. */
+let nightSpinning = false;
 /** Vrai tant que les scènes fixes sont à l'écran (faux une fois le devis déroulé par-dessus). */
 let scenesOnScreen = true;
 
@@ -279,6 +284,7 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
       bottle.dispose();
       canvas.remove();
       bottle = next;
+      bottle.setSpinning(nightSpinning);
       canvas = fresh;
       canvas.classList.add('is-ready');
       running = false;
@@ -286,6 +292,7 @@ async function mountBottle(onProgress: (ratio: number) => void): Promise<BottleC
     },
   };
 
+  liveBottle = () => bottle;
   bindBottleInteractions(hit, () => bottle);
   return bottle;
 }
@@ -308,7 +315,19 @@ function bindBottleInteractions(hit: HTMLElement, current: () => BottleControlle
   let travelled = 0;
   let downAt = 0;
 
+  // Nuit : la bouteille se manipule comme dans le simulateur (sphère virtuelle, déplacement, zoom).
+  const freeIds = new Set<number>();
+
   hit.addEventListener('pointerdown', (event) => {
+    if (current().isFree()) {
+      if (event.button > 2) return;
+      hit.setPointerCapture(event.pointerId);
+      freeIds.add(event.pointerId);
+      const panMode = event.button !== 0 || event.ctrlKey || event.metaKey;
+      current().freeDown(event.pointerId, event.clientX, event.clientY, panMode);
+      cursor?.classList.add('is-dragging');
+      return;
+    }
     if (event.button !== 0) return;
     pointerId = event.pointerId;
     hit.setPointerCapture(pointerId);
@@ -323,8 +342,12 @@ function bindBottleInteractions(hit: HTMLElement, current: () => BottleControlle
     moveX?.(event.clientX);
     moveY?.(event.clientY);
     // Clin d'œil : sur la capsule, le curseur propose de la dévisser.
+    if (freeIds.has(event.pointerId)) {
+      current().freeMove(event.pointerId, event.clientX, event.clientY);
+      return;
+    }
     if (cursor && pointerId === null) {
-      const label = onCap(event) ? 'Dévisser' : turnLabel;
+      const label = !current().isFree() && onCap(event) ? 'Dévisser' : turnLabel;
       if (cursor.textContent !== label) cursor.textContent = label;
     }
     if (event.pointerId !== pointerId) return;
@@ -335,6 +358,11 @@ function bindBottleInteractions(hit: HTMLElement, current: () => BottleControlle
   });
 
   const release = (event: PointerEvent) => {
+    if (freeIds.delete(event.pointerId)) {
+      current().freeUp(event.pointerId);
+      if (!freeIds.size) cursor?.classList.remove('is-dragging');
+      return;
+    }
     if (event.pointerId !== pointerId) return;
     pointerId = null;
     current().dragEnd();
@@ -360,14 +388,47 @@ function bindBottleInteractions(hit: HTMLElement, current: () => BottleControlle
   hit.addEventListener('pointerleave', () => cursor?.classList.remove('is-visible'));
 
   // Clavier : flèches pour tourner, Entrée / Espace pour le demi-tour.
+  hit.addEventListener('contextmenu', (event) => {
+    if (current().isFree()) event.preventDefault();
+  });
+  // Zoom : Ctrl + molette (ou pincement au pavé tactile). La molette seule continue de faire défiler la page.
+  hit.addEventListener(
+    'wheel',
+    (event) => {
+      if (!current().isFree() || !(event.ctrlKey || event.metaKey)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const delta = Math.max(-30, Math.min(30, event.deltaY));
+      current().freeZoom(Math.exp(delta * 0.008), event.clientX, event.clientY);
+    },
+    { passive: false },
+  );
+  hit.addEventListener('dblclick', () => {
+    if (current().isFree()) current().recenter();
+  });
+
   hit.addEventListener('keydown', (event) => {
+    if (current().isFree()) {
+      const k = event.key;
+      if (k === 'ArrowLeft') current().freeKick(0, -1, 0);
+      else if (k === 'ArrowRight') current().freeKick(0, 1, 0);
+      else if (k === 'ArrowUp') current().freeKick(-1, 0, 0);
+      else if (k === 'ArrowDown') current().freeKick(1, 0, 0);
+      else if (k === 'a' || k === 'q') current().freeKick(0, 0, 1);
+      else if (k === 'e' || k === 'd') current().freeKick(0, 0, -1);
+      else if (k === '+' || k === '=') current().freeZoom(0.9);
+      else if (k === '-') current().freeZoom(1.1);
+      else return;
+      event.preventDefault();
+      return;
+    }
     if (event.key === 'ArrowLeft') current().nudge(-0.7);
     else if (event.key === 'ArrowRight') current().nudge(0.7);
     else return;
     event.preventDefault();
   });
   hit.addEventListener('click', (event) => {
-    if (event.detail === 0) current().flip(); // activation clavier (le clic souris est géré au pointerup)
+    if (event.detail === 0 && !current().isFree()) current().flip(); // activation clavier (le clic souris est géré au pointerup)
   });
 }
 
@@ -492,6 +553,19 @@ function setupScenes({ fallback }: SceneOptions) {
   const quote = $('[data-quote]');
   const quotePin = $('[data-quote-pin]');
   if (!header || !hero || !about || !args || !quote || !quotePin) return;
+  // La nuit (simulateur complet) n'existe qu'avec la bouteille 3D.
+  const night = fallback ? null : $('[data-scene="night"]');
+  const nightBg = night ? $('[data-scene-bg]', night) : null;
+  const nightFront = night ? $('[data-night-front]', night) : null;
+  if (night) {
+    const spinButton = $<HTMLButtonElement>('[data-night-spin]', night);
+    spinButton?.addEventListener('click', () => {
+      nightSpinning = !nightSpinning;
+      spinButton.setAttribute('aria-pressed', String(nightSpinning));
+      liveBottle?.().setSpinning(nightSpinning);
+    });
+    $('[data-night-reset]', night)?.addEventListener('click', () => liveBottle?.().recenter());
+  }
 
   const items = $$('[data-arg]', args);
 
@@ -512,12 +586,13 @@ function setupScenes({ fallback }: SceneOptions) {
   // Couleur de l'en-tête : déduite directement de la position de scroll (et non posée par les
   // timelines, dont l'ordre d'exécution n'est pas garanti quand on saute d'une scène à l'autre).
   // Les seuils correspondent au moment où chaque nouveau fond a recouvert le haut de l'écran.
-  let marks = { dark: 0, light: 0, quote: 0, atQuote: 0 };
+  let marks = { dark: 0, light: 0, night: Infinity, quote: 0, atQuote: 0 };
   const top = (element: Element) => element.getBoundingClientRect().top + window.scrollY;
   const measure = () => {
     marks = {
       dark: top(hero) + 1.72 * vh(),
       light: top(about) + 2.04 * vh(),
+      night: night ? top(args) + 1.72 * vh() : Infinity,
       quote: top(quote) + 0.32 * vh(),
       atQuote: top(quote) + 0.4 * vh(),
     };
@@ -526,7 +601,7 @@ function setupScenes({ fallback }: SceneOptions) {
   ScrollTrigger.addEventListener('refresh', measure);
   gsap.ticker.add(() => {
     const y = window.scrollY;
-    const theme = y >= marks.quote ? 'dark' : y >= marks.light ? 'light' : y >= marks.dark ? 'dark' : 'light';
+    const theme = y >= marks.quote || y >= marks.night ? 'dark' : y >= marks.light ? 'light' : y >= marks.dark ? 'dark' : 'light';
     if (header.dataset.theme !== theme) header.dataset.theme = theme;
     const atQuote = String(y >= marks.atQuote);
     if (header.getAttribute('data-at-quote') !== atQuote) header.setAttribute('data-at-quote', atQuote);
@@ -689,12 +764,36 @@ function setupScenes({ fallback }: SceneOptions) {
     // Piloté par le scroll : seulement la bouteille (un tour, retour de face) et la sortie.
     const argsTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: scrollTrigger(args) });
     if (!compact) argsTl.to(pose, { spin: Math.PI * 4, duration: 0.95, ease: 'power1.inOut' }, 0);
-    // Sortie vers le devis : le texte s'efface, la bouteille quitte l'écran par le bas.
+    // Sortie : le texte s'efface…
     argsTl.to(argsLayers, { opacity: 0, y: () => -vh() * 0.06, duration: 0.3, ease: 'power1.in' }, 1);
-    if (!compact) argsTl.to(pose, { y: -1.4, tiltZ: 0.22, duration: 0.5, ease: 'power2.in' }, 1);
+    if (night && nightBg && nightFront) {
+      // … puis la nuit tombe : le noir monte du bas de l'écran, la bouteille déjà là glisse au centre
+      // et se recadre comme dans le simulateur, le sol d'eau apparaît sous elle.
+      argsTl.fromTo(
+        nightBg,
+        { clipPath: 'inset(100% 0% 0% 0%)' },
+        { clipPath: 'inset(0% 0% 0% 0%)', duration: 0.7, ease: 'power2.inOut' },
+        1.05,
+      );
+      argsTl.to(pose, { x: 0, y: 0, scale: 1, tiltZ: 0, duration: 0.8, ease: 'power2.inOut' }, 1.05);
+      argsTl.to(pose, { night: 1, duration: 0.6, ease: 'sine.inOut' }, 1.36);
+
+      /* ------------------------- Scène 4 : nuit (simulateur) ------------------------ */
+      const nightTl = gsap.timeline({ defaults: { ease: 'none' }, scrollTrigger: scrollTrigger(night) });
+      gsap.set(nightFront, { autoAlpha: 0, y: 18 });
+      nightTl.to(nightFront, { autoAlpha: 1, y: 0, duration: 0.25, ease: 'power2.out' }, 0);
+      // Près de deux écrans pour jouer avec la bouteille. Le devis s'ouvre pendant le dernier écran
+      // de la scène : le texte s'efface juste avant, la bouteille sort par le bas pendant l'ouverture.
+      nightTl.to(nightFront, { autoAlpha: 0, y: -18, duration: 0.22, ease: 'power1.in' }, 1.74);
+      nightTl.to(pose, { y: -1.4, duration: 0.5, ease: 'power2.in' }, 1.9);
+      nightTl.set({}, {}, SCENE_LENGTH.night);
+    } else {
+      // … et, sans la nuit (image de secours), la bouteille quitte l'écran par le bas.
+      if (!compact) argsTl.to(pose, { y: -1.4, tiltZ: 0.22, duration: 0.5, ease: 'power2.in' }, 1);
+    }
     argsTl.set({}, {}, 2);
 
-    /* -------------------------------- Scène 4 : devis ------------------------------ */
+    /* ---------------------------------- Devis --------------------------------- */
     // Le panneau noir s'ouvre comme une fente depuis le milieu de l'écran, puis le formulaire
     // défile normalement.
     const quoteTl = gsap.timeline({
@@ -726,7 +825,7 @@ function setupScenes({ fallback }: SceneOptions) {
 
     return () => {
       // Changement de mise en page (bureau ↔ mobile) : GSAP annule les timelines, on remet la pose à zéro.
-      Object.assign(pose, { spin: 0, x: 0, y: 0, scale: 1, tiltX: 0.1, tiltZ: 0 });
+      Object.assign(pose, { spin: 0, x: 0, y: 0, scale: 1, tiltX: 0.1, tiltZ: 0, night: 0 });
       backdrop.mix = 0;
     };
   });

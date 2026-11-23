@@ -4,7 +4,7 @@ import QuoteForm from '../components/QuoteForm.astro';
 import { Picture } from 'astro:assets';
 import bottleCutout from '../assets/bottle-cutout.png';
 import '../styles/home.css';
-import { brand, hero, about, argumentsSection, quote } from '../content/site';
+import { brand, hero, about, argumentsSection, night, quote } from '../content/site';
 
 const aboutWords = about.text.split(/\s+/).filter(Boolean);
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -166,6 +166,28 @@ const pad = (n: number) => String(n).padStart(2, '0');
 
       <div class="scene__front args__front">
         <h2 class="args__label label" id="args-label" data-args-label>{argumentsSection.label}</h2>
+      </div>
+    </section>
+
+    <!-- ====================== NUIT : LE SIMULATEUR ====================== -->
+    <!--
+      Affichée seulement avec la bouteille 3D (voir home.css). Le fond passe au noir, la bouteille
+      déjà à l'écran glisse au centre, le sol d'eau apparaît : c'est le simulateur complet, la
+      bouteille se manipule dans tous les sens.
+    -->
+    <section class="scene night" data-scene="night" data-theme-zone="dark" aria-labelledby="night-title">
+      <div class="scene__bg night__bg" data-scene-bg></div>
+      <div class="scene__front night__front" data-night-front>
+        <div class="night__text">
+          <p class="night__label label">{night.label}</p>
+          <h2 class="night__title display" id="night-title">{night.title}</h2>
+          <p class="night__hint">{night.hint}</p>
+          <p class="night__keys">{night.hintKeys}</p>
+        </div>
+        <div class="night__tools">
+          <button type="button" class="night__btn" data-night-spin aria-pressed="false">{night.spin}</button>
+          <button type="button" class="night__btn" data-night-reset>{night.reset}</button>
+        </div>
       </div>
     </section>
   </div>

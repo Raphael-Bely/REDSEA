@@ -59,6 +59,10 @@ html.has-scenes .args .scene__bg {
   z-index: 3;
 }
 
+html.has-scenes .night .scene__bg {
+  z-index: 4;
+}
+
 html.has-scenes .scene .scene__back {
   z-index: 10;
 }
@@ -78,10 +82,17 @@ html.has-scenes .about {
   height: 240svh;
 }
 
-/* Arguments : un écran de lecture, puis un écran de sortie vers le devis. */
+/* Arguments : un écran de lecture, puis un écran de sortie (vers la nuit, ou vers le devis). */
 html.has-scenes .args {
   height: 200vh;
   height: 200svh;
+}
+
+/* Nuit (simulateur) : près de deux écrans pour manipuler la bouteille ; le devis s'ouvre pendant le dernier. */
+html.has-scenes[data-bottle='3d'] .night {
+  display: block;
+  height: 300vh;
+  height: 300svh;
 }
 
 .stage__canvas {
@@ -158,11 +169,12 @@ html.has-scenes .hero {
   opacity: 0.17;
 }
 
-.hero__title {
+.hero__title.display {
   position: absolute;
   inset: 0;
   display: grid;
   place-items: center;
+  font-family: 'Redsea Lettering', var(--font-display);
   font-size: calc(21.4vw * var(--display-scale));
   line-height: 0.8;
   user-select: none;
@@ -1016,5 +1028,127 @@ html.has-scenes .site-footer {
   *::before,
   *::after {
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* ==========================================================================
+   Nuit : le simulateur complet (fond noir, sol d'eau, bouteille libre).
+   N'existe qu'avec les scènes et la bouteille 3D ; sinon la section est absente.
+   ========================================================================== */
+.night {
+  display: none;
+  color: #f3e2c4;
+}
+
+.night__bg {
+  background: #000;
+}
+
+.night__front {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(1.25rem, 3svh, 2.25rem);
+  padding: clamp(5rem, 13svh, 8rem) var(--gutter) clamp(2.5rem, 8svh, 5rem);
+  visibility: hidden;
+}
+
+.night__text {
+  max-width: min(30vw, 26rem);
+}
+
+.night__label {
+  color: #c9a45c;
+  margin-bottom: 0.9rem;
+}
+
+.night__title {
+  font-size: clamp(2.4rem, 5.2vw, 5rem);
+  line-height: 0.95;
+  text-wrap: balance;
+}
+
+.night__hint {
+  margin-top: 1.1rem;
+  color: rgba(243, 226, 196, 0.78);
+  line-height: 1.5;
+  text-wrap: pretty;
+}
+
+.night__keys {
+  margin-top: 0.7rem;
+  font-size: var(--fs-small);
+  color: rgba(243, 226, 196, 0.5);
+}
+
+.night__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  pointer-events: auto;
+  align-self: flex-start;
+}
+
+.night__btn {
+  font: inherit;
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: #f3e2c4;
+  background: rgba(28, 23, 25, 0.85);
+  border: 1px solid rgba(243, 226, 196, 0.22);
+  border-radius: 999px;
+  padding: 0.55rem 1rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.night__btn:hover {
+  border-color: rgba(243, 226, 196, 0.55);
+}
+
+.night__btn:focus-visible {
+  outline: 2px solid #c9a45c;
+  outline-offset: 3px;
+}
+
+.night__btn[aria-pressed='true'] {
+  background: #c9a45c;
+  border-color: #c9a45c;
+  color: #141012;
+}
+
+@media (pointer: coarse) {
+  .night__keys {
+    display: none;
+  }
+}
+
+/* Téléphone : le texte en haut, la bouteille au milieu, les boutons en bas. */
+@media (max-width: 760px), (max-aspect-ratio: 4 / 5) {
+  .night__front {
+    justify-content: space-between;
+    padding-top: clamp(4.5rem, 11svh, 6rem);
+    padding-bottom: clamp(1.5rem, 5svh, 3rem);
+  }
+
+  .night__text {
+    max-width: none;
+  }
+
+  .night__title {
+    font-size: clamp(2rem, 9vw, 3rem);
+  }
+
+  .night__hint {
+    margin-top: 0.6rem;
+    font-size: var(--fs-small);
+  }
+
+  .night__tools {
+    align-self: center;
   }
 }

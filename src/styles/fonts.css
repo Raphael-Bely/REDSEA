@@ -21,6 +21,16 @@
   font-display: swap;
 }
 
+/* Lettrage de l'étiquette (REDSEA vertical) : seulement les lettres R, E, D, S, A, tracées depuis l'étiquette.
+   Sert au grand titre du hero ; toute autre lettre retombe sur la police d'affichage. */
+@font-face {
+  font-family: 'Redsea Lettering';
+  src: url('/fonts/redsea-lettering.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Police de texte : Schibsted Grotesk (SIL OFL), variable 400–900. */
 @font-face {
   font-family: 'Schibsted Grotesk';
