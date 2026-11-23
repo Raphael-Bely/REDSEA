@@ -179,7 +179,7 @@ html.has-scenes .hero {
      (--hero-gap ≈ sa largeur). REDSEA = 4,28 em : la taille est bornée pour que le titre tienne toujours
      dans la largeur, espace compris. */
   --hero-gap: 27svh;
-  font-size: calc(min(18.6vw, (92vw - var(--hero-gap)) / 4.28) * var(--display-scale));
+  font-size: calc(min(18vw, (88vw - var(--hero-gap)) / 4.28) * var(--display-scale));
   line-height: 0.8;
   user-select: none;
 }
